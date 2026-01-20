@@ -20,13 +20,6 @@ describe('ProgressionSystem', () => {
 
   it('should allow researching available tech', () => {
     const system = new ProgressionSystem()
-    const playerStats: PlayerStats = {
-      level: 1,
-      experience: 0,
-      prestigeLevel: 0,
-      unlockedTech: [],
-      completedResearch: [],
-    }
 
     // Find a tech that can be researched
     const availableTech = system.getTechTree().find(
@@ -34,7 +27,7 @@ describe('ProgressionSystem', () => {
     )
 
     if (availableTech) {
-      const canResearch = system.canResearch(availableTech.id, playerStats)
+      const canResearch = system.canResearch(availableTech.id)
       expect(canResearch).toBe(true)
 
       const result = system.researchTech(availableTech.id)

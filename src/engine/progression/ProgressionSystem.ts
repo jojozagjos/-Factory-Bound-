@@ -165,7 +165,7 @@ export class ProgressionSystem {
     return this.techTree
   }
 
-  canResearch(techId: string, _playerStats: PlayerStats): boolean {
+  canResearch(techId: string): boolean {
     const tech = this.techTree.find(t => t.id === techId)
     if (!tech || tech.researched) return false
 
@@ -184,7 +184,7 @@ export class ProgressionSystem {
     return true
   }
 
-  getUnlockedRecipes(_playerStats: PlayerStats): string[] {
+  getUnlockedRecipes(): string[] {
     const unlocks: string[] = []
     this.techTree.forEach(tech => {
       if (tech.researched) {

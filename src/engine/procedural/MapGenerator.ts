@@ -14,7 +14,7 @@ export class ProceduralGenerator {
     // Generate base terrain using Perlin-like noise
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
-        const tile = this.generateTile(x, y, modifiers)
+        const tile = this.generateTile(x, y)
         tiles.set(`${x},${y}`, tile)
       }
     }
@@ -33,7 +33,7 @@ export class ProceduralGenerator {
     }
   }
 
-  private generateTile(x: number, y: number, _modifiers: WorldModifier[]): WorldTile {
+  private generateTile(x: number, y: number): WorldTile {
     const noise = this.noise2D(x / 50, y / 50)
     
     let type: WorldTile['type'] = 'grass'

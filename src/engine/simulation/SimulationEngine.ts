@@ -74,13 +74,13 @@ export class SimulationEngine {
         this.updateInserter(machine, allMachines)
         break
       case 'turret':
-        this.updateTurret(machine)
+        this.updateTurret()
         break
     }
 
     // Execute node program if present
     if (machine.nodeProgram) {
-      this.executeNodeProgram(machine)
+      this.executeNodeProgram()
     }
   }
 
@@ -165,7 +165,7 @@ export class SimulationEngine {
     }
   }
 
-  private updateTurret(_machine: Machine): void {
+  private updateTurret(): void {
     // Turret logic handled separately in combat system
   }
 
@@ -232,7 +232,7 @@ export class SimulationEngine {
     }
   }
 
-  private executeNodeProgram(_machine: Machine): void {
+  private executeNodeProgram(): void {
     // Execute visual programming logic
     // This would evaluate the node graph and control machine behavior
     // Simplified for now
