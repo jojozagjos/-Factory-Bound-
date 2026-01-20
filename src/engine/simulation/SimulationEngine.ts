@@ -165,7 +165,7 @@ export class SimulationEngine {
     }
   }
 
-  private updateTurret(_machine: Machine): void {
+  private updateTurret(): void {
     // Turret logic handled separately in combat system
   }
 
@@ -232,7 +232,7 @@ export class SimulationEngine {
     }
   }
 
-  private executeNodeProgram(_machine: Machine): void {
+  private executeNodeProgram(): void {
     // Execute visual programming logic
     // This would evaluate the node graph and control machine behavior
     // Simplified for now
