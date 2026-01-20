@@ -1,0 +1,356 @@
+.hud {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 100;
+}
+
+.hud > * {
+  pointer-events: auto;
+}
+
+/* Top Bar */
+.hud-top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  padding: 1rem;
+  background: linear-gradient(to bottom, rgba(26, 26, 26, 0.95), transparent);
+}
+
+.player-stats {
+  display: flex;
+  gap: 2rem;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.stat-value.prestige {
+  color: var(--warning);
+}
+
+.game-controls {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.control-btn {
+  width: 50px;
+  height: 50px;
+  background: var(--secondary-bg);
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.control-btn:hover {
+  border-color: var(--accent);
+  background: rgba(74, 158, 255, 0.1);
+}
+
+.control-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+/* Quick Actions */
+.hud-quick-actions {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.quick-btn {
+  padding: 0.75rem 1rem;
+  background: var(--secondary-bg);
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.quick-btn:hover {
+  border-color: var(--accent);
+  background: rgba(74, 158, 255, 0.1);
+  transform: translateX(5px);
+}
+
+/* Bottom Info */
+.hud-bottom {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  padding: 1rem;
+  background: linear-gradient(to top, rgba(26, 26, 26, 0.95), transparent);
+}
+
+.machine-info {
+  background: var(--secondary-bg);
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+  padding: 1rem;
+  min-width: 300px;
+}
+
+.machine-info h3 {
+  margin: 0 0 1rem 0;
+  color: var(--accent);
+  font-size: 1.2rem;
+}
+
+.machine-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.stat-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.9rem;
+}
+
+.stat-row > span:first-child {
+  min-width: 80px;
+  color: var(--text-secondary);
+}
+
+.health-bar {
+  flex: 1;
+  height: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.health-fill {
+  height: 100%;
+  background: linear-gradient(to right, var(--success), var(--success));
+  transition: width 0.3s;
+}
+
+.powered {
+  color: var(--success);
+}
+
+.no-power {
+  color: var(--danger);
+}
+
+.resource-display {
+  display: flex;
+  gap: 2rem;
+}
+
+.resource {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--secondary-bg);
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+}
+
+.resource-icon {
+  font-size: 1.5rem;
+}
+
+.resource-name {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.resource-amount {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* Inventory Panel */
+.inventory-panel {
+  position: absolute;
+  top: 50%;
+  right: 1rem;
+  transform: translateY(-50%);
+  width: 400px;
+  max-height: 600px;
+  background: var(--secondary-bg);
+  border: 2px solid var(--accent);
+  border-radius: 12px;
+  overflow: hidden;
+  animation: slideIn 0.3s ease-out;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.3);
+  border-bottom: 2px solid var(--border);
+}
+
+.panel-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: var(--accent);
+}
+
+.close-btn {
+  width: 36px;
+  height: 36px;
+  background: transparent;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: all 0.2s;
+}
+
+.close-btn:hover {
+  color: var(--danger);
+  transform: scale(1.1);
+}
+
+.inventory-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+  padding: 1rem;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.inventory-item {
+  background: var(--primary-bg);
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.inventory-item:hover {
+  border-color: var(--accent);
+  transform: scale(1.05);
+}
+
+.item-icon {
+  font-size: 2rem;
+}
+
+.item-name {
+  font-size: 0.75rem;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.item-quantity {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--success);
+}
+
+.empty-inventory {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: var(--text-secondary);
+  padding: 2rem;
+}
+
+/* Pause Overlay */
+.pause-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.2s;
+}
+
+.pause-overlay h1 {
+  font-size: 5rem;
+  margin: 0;
+  color: var(--accent);
+  text-shadow: 0 0 20px rgba(74, 158, 255, 0.5);
+}
+
+.pause-overlay p {
+  font-size: 1.5rem;
+  color: var(--text-secondary);
+  margin: 1rem 0 0 0;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) translateX(50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .inventory-panel,
+  .pause-overlay {
+    animation: none;
+  }
+  
+  .quick-btn:hover,
+  .inventory-item:hover {
+    transform: none;
+  }
+}
