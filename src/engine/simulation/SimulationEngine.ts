@@ -1,4 +1,4 @@
-import type { Machine, Item, Recipe, PowerState, Enemy, Projectile } from '../../types/game'
+import type { Machine, Enemy, Projectile } from '../../types/game'
 
 export class SimulationEngine {
   private tickCount = 0
@@ -165,7 +165,7 @@ export class SimulationEngine {
     }
   }
 
-  private updateTurret(machine: Machine): void {
+  private updateTurret(_machine: Machine): void {
     // Turret logic handled separately in combat system
   }
 
@@ -232,7 +232,7 @@ export class SimulationEngine {
     }
   }
 
-  private executeNodeProgram(machine: Machine): void {
+  private executeNodeProgram(_machine: Machine): void {
     // Execute visual programming logic
     // This would evaluate the node graph and control machine behavior
     // Simplified for now

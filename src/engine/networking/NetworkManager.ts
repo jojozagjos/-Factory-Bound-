@@ -12,7 +12,8 @@ export class NetworkManager {
   private socket: Socket | null = null
   private currentSession: GameSession | null = null
   private messageQueue: NetworkMessage[] = []
-  private syncInterval: number = 50 // ms between sync updates
+  // syncInterval reserved for future periodic state synchronization
+  // private syncInterval: number = 50 // ms between sync updates
 
   constructor(private serverUrl: string = 'ws://localhost:3001') {}
 

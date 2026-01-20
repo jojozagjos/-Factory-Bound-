@@ -33,9 +33,8 @@ export class ProceduralGenerator {
     }
   }
 
-  private generateTile(x: number, y: number, modifiers: WorldModifier[]): WorldTile {
+  private generateTile(x: number, y: number, _modifiers: WorldModifier[]): WorldTile {
     const noise = this.noise2D(x / 50, y / 50)
-    const moisture = this.noise2D((x + 1000) / 40, (y + 1000) / 40)
     
     let type: WorldTile['type'] = 'grass'
     let resource = undefined
@@ -107,7 +106,7 @@ export class ProceduralGenerator {
     return ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v)
   }
 
-  private hash(i: number): number {
+  private hash(_i: number): number {
     return Math.floor(this.rng() * 256) & 255
   }
 

@@ -6,8 +6,7 @@ import type {
   WorldMap, 
   TechNode, 
   GameSession,
-  SaveData,
-  Item 
+  SaveData
 } from '../types/game'
 
 interface GameState {

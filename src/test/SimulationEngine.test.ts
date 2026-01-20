@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { SimulationEngine } from '../engine/simulation/SimulationEngine'
+import { MachineType } from '../types/game'
 import type { Machine, Enemy, Projectile } from '../types/game'
 
 describe('SimulationEngine', () => {
@@ -22,7 +23,7 @@ describe('SimulationEngine', () => {
     const engine = new SimulationEngine()
     const miner: Machine = {
       id: 'miner1',
-      type: 'miner',
+      type: MachineType.MINER,
       position: { x: 0, y: 0 },
       rotation: 0,
       inventory: [],
@@ -44,7 +45,7 @@ describe('SimulationEngine', () => {
     const engine = new SimulationEngine()
     const miner: Machine = {
       id: 'miner2',
-      type: 'miner',
+      type: MachineType.MINER,
       position: { x: 0, y: 0 },
       rotation: 0,
       inventory: [],
