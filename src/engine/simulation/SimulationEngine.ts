@@ -74,13 +74,13 @@ export class SimulationEngine {
         this.updateInserter(machine, allMachines)
         break
       case 'turret':
-        this.updateTurret(machine)
+        this.updateTurret()
         break
     }
 
     // Execute node program if present
     if (machine.nodeProgram) {
-      this.executeNodeProgram(machine)
+      this.executeNodeProgram()
     }
   }
 
