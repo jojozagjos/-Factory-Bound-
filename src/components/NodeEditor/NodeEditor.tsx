@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import React, { useCallback } from 'react'
 import ReactFlow, {
   Node,
   Edge,
@@ -130,8 +130,5 @@ const NodeEditor = ({ onClose }: NodeEditorProps) => {
     </div>
   )
 }
-
-// Add React import at the top
-import React from 'react'
 
 export default NodeEditor

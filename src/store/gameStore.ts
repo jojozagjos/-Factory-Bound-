@@ -6,8 +6,23 @@ import type {
   WorldMap, 
   TechNode, 
   GameSession,
-  SaveData
+  SaveData,
+  GameSettings
 } from '../types/game'
+
+// Helper function to unlock dependent technologies
+function unlockDependentTechs(techTree: TechNode[], unlockedTechId: string): void {
+  techTree.forEach(tech => {
+    if (tech.dependencies.includes(unlockedTechId)) {
+      const allDepsResearched = tech.dependencies.every(depId =>
+        techTree.find(dep => dep.id === depId)?.researched ?? false
+      )
+      if (allDepsResearched) {
+        tech.researched = true
+      }
+    }
+  })
+}
 
 interface GameState {
   // Session
@@ -93,31 +108,33 @@ export const useGameStore = create<GameState>()(
       const tech = state.techTree.find(t => t.id === techId)
       if (tech) {
         tech.researched = true
-        // Unlock dependent techs
-        state.techTree.forEach(t => {
-          if (t.dependencies.includes(techId)) {
-            const allDepsResearched = t.dependencies.every(depId =>
-              state.techTree.find(dep => dep.id === depId)?.researched
-            )
-            if (allDepsResearched) {
-              t.researched = true
-            }
-          }
-        })
+        // Unlock dependent techs using helper function
+        unlockDependentTechs(state.techTree, techId)
       }
     }),
     
     saveGame: () => {
       const state = get()
+      if (!state.worldMap) {
+        throw new Error('Cannot save game: world map not initialized')
+      }
+      const emptySettings: GameSettings = {
+        maxPlayers: 1,
+        difficulty: 'normal',
+        pvpEnabled: false,
+        friendlyFire: false,
+        worldSeed: 0,
+        modifiers: [],
+      }
       return {
         version: '1.0.0',
         timestamp: Date.now(),
         sessionId: state.session?.id ?? '',
-        world: state.worldMap!,
+        world: state.worldMap,
         players: state.session?.players ?? [],
         machines: state.machines,
         techTree: state.techTree,
-        gameSettings: state.session?.settings ?? {} as any,
+        gameSettings: state.session?.settings ?? emptySettings,
       }
     },
     

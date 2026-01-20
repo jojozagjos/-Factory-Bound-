@@ -106,8 +106,10 @@ export class ProceduralGenerator {
     return ((h & 1) === 0 ? u : -u) + ((h & 2) === 0 ? v : -v)
   }
 
-  private hash(_i: number): number {
-    return Math.floor(this.rng() * 256) & 255
+  private hash(i: number): number {
+    // Use the input value to generate deterministic hash
+    const x = Math.sin(i) * 10000
+    return Math.floor((x - Math.floor(x)) * 256) & 255
   }
 
   private applyModifier(tiles: Map<string, WorldTile>, modifier: WorldModifier): void {
