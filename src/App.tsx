@@ -223,6 +223,11 @@ function App() {
     audioSystem.playMusic('menu_theme', true)
   }
 
+  const handleLogout = () => {
+    stopGame()
+    setGameState('login')
+  }
+
   const handleRetry = () => {
     // Get current game mode
     const currentMode = useGameStore.getState().currentGameMode
@@ -271,6 +276,7 @@ function App() {
           onStartGame={handleStartGame}
           onStartTutorial={handleStartTutorial}
           onStartMultiplayer={handleStartMultiplayer}
+          onLogout={handleLogout}
         />
       )}
       {gameState === 'game' && (

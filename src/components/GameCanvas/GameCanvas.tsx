@@ -16,6 +16,18 @@ const GameCanvas = () => {
   const [buildingMode, setBuildingMode] = useState<MachineType | null>(null)
   const [ghostPosition, setGhostPosition] = useState<{ x: number; y: number } | null>(null)
   const [camera, setCamera] = useState<CameraState>({ x: 0, y: 0, zoom: 1 })
+  const [showGrid, setShowGrid] = useState(true)
+
+  // Listen for grid toggle
+  useEffect(() => {
+    const handleGridToggle = (e: Event) => {
+      const customEvent = e as CustomEvent<boolean>
+      setShowGrid(customEvent.detail)
+    }
+    
+    window.addEventListener('toggleGrid', handleGridToggle)
+    return () => window.removeEventListener('toggleGrid', handleGridToggle)
+  }, [])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -134,19 +146,21 @@ const GameCanvas = () => {
       }
 
       // Draw grid overlay (optional, for Builderment-style look)
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)'
-      ctx.lineWidth = 1 / camera.zoom
-      for (let x = Math.max(0, visibleLeft); x <= Math.min(worldMap?.width || 0, visibleRight); x++) {
-        ctx.beginPath()
-        ctx.moveTo(x * gridSize, Math.max(0, visibleTop) * gridSize)
-        ctx.lineTo(x * gridSize, Math.min(worldMap?.height || 0, visibleBottom) * gridSize)
-        ctx.stroke()
-      }
-      for (let y = Math.max(0, visibleTop); y <= Math.min(worldMap?.height || 0, visibleBottom); y++) {
-        ctx.beginPath()
-        ctx.moveTo(Math.max(0, visibleLeft) * gridSize, y * gridSize)
-        ctx.lineTo(Math.min(worldMap?.width || 0, visibleRight) * gridSize, y * gridSize)
-        ctx.stroke()
+      if (showGrid) {
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)'
+        ctx.lineWidth = 1 / camera.zoom
+        for (let x = Math.max(0, visibleLeft); x <= Math.min(worldMap?.width || 0, visibleRight); x++) {
+          ctx.beginPath()
+          ctx.moveTo(x * gridSize, Math.max(0, visibleTop) * gridSize)
+          ctx.lineTo(x * gridSize, Math.min(worldMap?.height || 0, visibleBottom) * gridSize)
+          ctx.stroke()
+        }
+        for (let y = Math.max(0, visibleTop); y <= Math.min(worldMap?.height || 0, visibleBottom); y++) {
+          ctx.beginPath()
+          ctx.moveTo(Math.max(0, visibleLeft) * gridSize, y * gridSize)
+          ctx.lineTo(Math.min(worldMap?.width || 0, visibleRight) * gridSize, y * gridSize)
+          ctx.stroke()
+        }
       }
 
       // Draw ghost building if in building mode
@@ -290,7 +304,7 @@ const GameCanvas = () => {
         cancelAnimationFrame(animationFrameId)
       }
     }
-  }, [machines, enemies, projectiles, worldMap, selectedMachine, buildingMode, ghostPosition, camera])
+  }, [machines, enemies, projectiles, worldMap, selectedMachine, buildingMode, ghostPosition, camera, showGrid])
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current
@@ -376,6 +390,7 @@ const GameCanvas = () => {
         camera={camera}
         onCameraChange={setCamera}
         canvasRef={canvasRef}
+        worldBounds={worldMap ? { width: worldMap.width, height: worldMap.height } : undefined}
       />
     </>
   )

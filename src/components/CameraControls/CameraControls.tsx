@@ -10,9 +10,30 @@ interface CameraControlsProps {
   camera: CameraState
   onCameraChange: (camera: CameraState) => void
   canvasRef: React.RefObject<HTMLCanvasElement>
+  worldBounds?: { width: number; height: number } // Optional world bounds for camera limiting
 }
 
-const CameraControls = ({ camera, onCameraChange, canvasRef }: CameraControlsProps) => {
+const CameraControls = ({ camera, onCameraChange, canvasRef, worldBounds }: CameraControlsProps) => {
+  // Helper function to clamp camera position within world bounds
+  const clampCamera = (newCamera: CameraState): CameraState => {
+    if (!worldBounds) return newCamera
+    
+    const gridSize = 50
+    const maxX = (worldBounds.width * gridSize) / 2
+    const maxY = (worldBounds.height * gridSize) / 2
+    const minX = -(worldBounds.width * gridSize) / 2
+    const minY = -(worldBounds.height * gridSize) / 2
+    
+    // Add padding based on zoom to prevent seeing edges
+    const padding = 200 / newCamera.zoom
+    
+    return {
+      ...newCamera,
+      x: Math.max(minX + padding, Math.min(maxX - padding, newCamera.x)),
+      y: Math.max(minY + padding, Math.min(maxY - padding, newCamera.y)),
+    }
+  }
+
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -35,11 +56,13 @@ const CameraControls = ({ camera, onCameraChange, canvasRef }: CameraControlsPro
         const deltaX = e.clientX - lastMousePos.x
         const deltaY = e.clientY - lastMousePos.y
         
-        onCameraChange({
+        const newCamera = clampCamera({
           ...camera,
           x: camera.x - deltaX / camera.zoom,
           y: camera.y - deltaY / camera.zoom,
         })
+        
+        onCameraChange(newCamera)
 
         lastMousePos = { x: e.clientX, y: e.clientY }
       }
@@ -70,11 +93,13 @@ const CameraControls = ({ camera, onCameraChange, canvasRef }: CameraControlsPro
       const newX = worldX - (mouseX - canvas.width / 2) / newZoom
       const newY = worldY - (mouseY - canvas.height / 2) / newZoom
 
-      onCameraChange({
+      const newCamera = clampCamera({
         x: newX,
         y: newY,
         zoom: newZoom,
       })
+      
+      onCameraChange(newCamera)
     }
 
     // Prevent context menu on right click

@@ -25,8 +25,34 @@ const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree
   const [showPauseMenu, setShowPauseMenu] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [showPlayerList, setShowPlayerList] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const [showGrid, setShowGrid] = useState(true)
   
   const isMultiplayer = session?.settings?.maxPlayers && session.settings.maxPlayers > 1
+  
+  // Check fullscreen status
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement)
+    }
+    
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  }, [])
+  
+  const toggleFullscreen = () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen()
+    } else {
+      document.exitFullscreen()
+    }
+  }
+  
+  const toggleGridSetting = () => {
+    setShowGrid(prev => !prev)
+    // Dispatch custom event for GameCanvas to listen
+    window.dispatchEvent(new CustomEvent('toggleGrid', { detail: !showGrid }))
+  }
   
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -368,6 +394,25 @@ const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree
               <div className="pause-menu-settings">
                 <h2>Settings</h2>
                 <div className="settings-section">
+                  <h3>Display</h3>
+                  <label>
+                    <span>Fullscreen</span>
+                    <input 
+                      type="checkbox" 
+                      checked={isFullscreen}
+                      onChange={toggleFullscreen}
+                    />
+                  </label>
+                  <label>
+                    <span>Show Grid</span>
+                    <input 
+                      type="checkbox" 
+                      checked={showGrid}
+                      onChange={toggleGridSetting}
+                    />
+                  </label>
+                </div>
+                <div className="settings-section">
                   <h3>Graphics</h3>
                   <label>
                     <span>Quality</span>
@@ -394,7 +439,7 @@ const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree
                     <input type="range" min="0" max="100" defaultValue="80" />
                   </label>
                 </div>
-                <p className="settings-note">Note: Settings are currently visual only. Full settings system coming soon.</p>
+                <p className="settings-note">Note: Some settings are currently visual only. Full settings system coming soon.</p>
                 <button 
                   className="menu-btn" 
                   onClick={() => setShowSettings(false)}

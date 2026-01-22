@@ -62,7 +62,8 @@
 .menu-buttons {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.25rem;
+  margin-top: 0.5rem;
 }
 
 .menu-button {
@@ -113,6 +114,19 @@
   background: transparent;
   border-color: var(--text-secondary);
   color: var(--text-secondary);
+}
+
+.menu-button.logout-btn {
+  margin-top: 1rem;
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #ef4444;
+}
+
+.menu-button.logout-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: #ef4444;
+  box-shadow: 0 5px 20px rgba(239, 68, 68, 0.3);
 }
 
 .sub-menu {

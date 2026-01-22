@@ -11,10 +11,15 @@ export class ProceduralGenerator {
   generateMap(width: number, height: number, modifiers: WorldModifier[] = []): WorldMap {
     const tiles = new Map<string, WorldTile>()
     
-    // Generate base terrain using Perlin-like noise
+    // Calculate center of the map for island generation
+    const centerX = width / 2
+    const centerY = height / 2
+    const islandRadius = Math.min(width, height) * 0.4 // Island takes up 80% of map diameter
+    
+    // Generate base terrain using Perlin-like noise with island shape
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
-        const tile = this.generateTile(x, y)
+        const tile = this.generateTile(x, y, centerX, centerY, islandRadius)
         tiles.set(`${x},${y}`, tile)
       }
     }
@@ -33,24 +38,37 @@ export class ProceduralGenerator {
     }
   }
 
-  private generateTile(x: number, y: number): WorldTile {
+  private generateTile(x: number, y: number, centerX: number, centerY: number, islandRadius: number): WorldTile {
     const noise = this.noise2D(x / 50, y / 50)
+    
+    // Calculate distance from center for island shape
+    const dx = x - centerX
+    const dy = y - centerY
+    const distanceFromCenter = Math.sqrt(dx * dx + dy * dy)
+    
+    // Create island falloff (smooth transition from land to water at edges)
+    const islandFalloff = Math.max(0, 1 - (distanceFromCenter / islandRadius))
+    const islandNoise = noise * islandFalloff
     
     let type: WorldTile['type'] = 'grass'
     let resource = undefined
 
-    // Determine tile type based on noise
-    if (noise < -0.3) {
+    // Determine tile type based on modified noise
+    if (islandFalloff < 0.1 || islandNoise < -0.2) {
+      // Far from center or very low noise = water
       type = 'water'
-    } else if (noise < 0) {
+    } else if (islandNoise < 0) {
+      // Transition zone = sand (beach)
       type = 'sand'
-    } else if (noise > 0.5) {
+    } else if (islandNoise > 0.5) {
+      // High elevation = stone (mountains/hills)
       type = 'stone'
     } else {
+      // Normal elevation = grass
       type = 'grass'
     }
 
-    // Add resources
+    // Add resources only on land tiles
     if (type === 'stone' && this.rng() > 0.7) {
       resource = {
         type: 'iron_ore',
