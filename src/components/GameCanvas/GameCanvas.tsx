@@ -43,8 +43,8 @@ const GameCanvas = () => {
       }
 
       // Draw world tiles (if map exists)
-      if (worldMap && worldMap.tiles) {
-        // Convert Map to array and iterate
+      if (worldMap) {
+        // Convert Map to array for iteration
         const tilesArray = Array.from(worldMap.tiles.values())
         tilesArray.forEach(tile => {
           const screenX = tile.x * gridSize + canvas.width / 2

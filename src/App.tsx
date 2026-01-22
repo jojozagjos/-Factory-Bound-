@@ -101,7 +101,7 @@ function App() {
             onSave={() => handleOpenSaveManager('save')}
             onLoad={() => handleOpenSaveManager('load')}
           />
-          {showNodeEditor && selectedMachine && (
+          {showNodeEditor && (
             <NodeEditor onClose={() => setShowNodeEditor(false)} />
           )}
           {showBuildMenu && (
