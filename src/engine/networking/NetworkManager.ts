@@ -108,9 +108,11 @@ export class NetworkManager {
         return
       }
 
+      // Create a temporary player object
+      // In production, this should use actual player data from authentication
       const player: Player = {
         id: 'player_' + Date.now(),
-        username: 'Player',
+        username: 'Player', // Should be from login/auth system
         position: { x: 0, y: 0 },
         inventory: [],
         health: 100,

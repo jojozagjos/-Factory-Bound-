@@ -159,7 +159,8 @@ const MultiplayerLobby = ({ mode, isPvP, onStartGame, onCancel }: MultiplayerLob
 
   // Lobby view (session created/joined)
   if (currentSession) {
-    const isHost = currentSession.host === 'local' // In a real implementation, check actual player ID
+    // TODO: In production, compare with actual authenticated player ID
+    const isHost = currentSession.host === 'local' // Placeholder until server integration
     const canStart = isHost && currentSession.players.length >= (isPvP ? 2 : 1)
 
     return (
@@ -197,7 +198,7 @@ const MultiplayerLobby = ({ mode, isPvP, onStartGame, onCancel }: MultiplayerLob
                     <span>Max Players:</span>
                     <select 
                       value={settings.maxPlayers} 
-                      onChange={(e) => setSettings({...settings, maxPlayers: parseInt(e.target.value)})}
+                      onChange={(e) => setSettings({...settings, maxPlayers: parseInt(e.target.value, 10)})}
                     >
                       {isPvP ? (
                         <>
@@ -282,7 +283,7 @@ const MultiplayerLobby = ({ mode, isPvP, onStartGame, onCancel }: MultiplayerLob
                   <span>Max Players:</span>
                   <select 
                     value={settings.maxPlayers}
-                    onChange={(e) => setSettings({...settings, maxPlayers: parseInt(e.target.value)})}
+                    onChange={(e) => setSettings({...settings, maxPlayers: parseInt(e.target.value, 10)})}
                   >
                     {isPvP ? (
                       <>
@@ -324,7 +325,7 @@ const MultiplayerLobby = ({ mode, isPvP, onStartGame, onCancel }: MultiplayerLob
                     <input 
                       type="number" 
                       value={settings.worldSeed}
-                      onChange={(e) => setSettings({...settings, worldSeed: parseInt(e.target.value)})}
+                      onChange={(e) => setSettings({...settings, worldSeed: parseInt(e.target.value, 10)})}
                     />
                   </label>
                 )}
