@@ -7,28 +7,52 @@ import Tutorial from './components/Tutorial/Tutorial'
 import BuildMenu from './components/BuildMenu/BuildMenu'
 import TechTree from './components/TechTree/TechTree'
 import SaveManager from './components/SaveManager/SaveManager'
+import LoginScreen from './components/LoginScreen/LoginScreen'
 import { useTutorialStore } from './store/tutorialStore'
 import { useGameStore } from './store/gameStore'
 import { useAutoSave } from './hooks/useAutoSave'
 import type { MachineType } from './types/game'
 import './App.css'
 
-type GameState = 'menu' | 'game' | 'editor'
+type GameState = 'login' | 'menu' | 'game' | 'editor'
 
 function App() {
-  const [gameState, setGameState] = useState<GameState>('menu')
+  const [gameState, setGameState] = useState<GameState>('login')
   const [showNodeEditor, setShowNodeEditor] = useState(false)
   const [showBuildMenu, setShowBuildMenu] = useState(false)
   const [showTechTree, setShowTechTree] = useState(false)
   const [showSaveManager, setShowSaveManager] = useState(false)
   const [saveManagerMode, setSaveManagerMode] = useState<'save' | 'load'>('save')
   const [_selectedBuilding, setSelectedBuilding] = useState<MachineType | null>(null)
+  const [_username, setUsername] = useState<string>('')
   const startTutorial = useTutorialStore(state => state.startTutorial)
   const startGame = useGameStore(state => state.startGame)
+  const setPlayer = useGameStore(state => state.setPlayer)
   const selectedMachine = useGameStore(state => state.selectedMachine)
 
   // Enable auto-save when in game
   useAutoSave(gameState === 'game')
+
+  const handleLogin = (username: string) => {
+    setUsername(username)
+    // Set the player username
+    setPlayer({
+      id: 'player_1',
+      username: username,
+      position: { x: 50, y: 50 },
+      inventory: [],
+      health: 100,
+      maxHealth: 100,
+      stats: {
+        level: 1,
+        experience: 0,
+        prestigeLevel: 0,
+        unlockedTech: [],
+        completedResearch: [],
+      },
+    })
+    setGameState('menu')
+  }
 
   const handleStartGame = (withTutorial: boolean = false) => {
     // Initialize game with default settings
@@ -66,6 +90,9 @@ function App() {
 
   return (
     <div className="app">
+      {gameState === 'login' && (
+        <LoginScreen onLogin={handleLogin} />
+      )}
       {gameState === 'menu' && (
         <MainMenu 
           onStartGame={() => handleStartGame(false)}
