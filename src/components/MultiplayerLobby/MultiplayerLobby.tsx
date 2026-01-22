@@ -481,30 +481,6 @@ const MultiplayerLobby = ({ mode, isPvP, onStartGame, onCancel }: MultiplayerLob
       </div>
     )
   }
-                      <button 
-                        className="lobby-button small" 
-                        onClick={() => handleJoinSession(session.id)}
-                      >
-                        Join
-                      </button>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-            {error && <div className="lobby-error-msg">{error}</div>}
-          </div>
-
-          <div className="lobby-actions">
-            <button className="lobby-button" onClick={onCancel}>
-              Back
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
 
   // Ranked matchmaking
   return (

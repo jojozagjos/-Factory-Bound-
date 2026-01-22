@@ -59,13 +59,18 @@ const GameCanvas = () => {
 
       const gridSize = 50
 
+      // Calculate visible area for optimization
+      let visibleLeft = 0
+      let visibleRight = 0
+      let visibleTop = 0
+      let visibleBottom = 0
+
       // Draw world tiles (if map exists)
       if (worldMap) {
-        // Calculate visible area for optimization
-        const visibleLeft = Math.floor((camera.x - canvas.width / (2 * camera.zoom)) / gridSize) - 1
-        const visibleRight = Math.ceil((camera.x + canvas.width / (2 * camera.zoom)) / gridSize) + 1
-        const visibleTop = Math.floor((camera.y - canvas.height / (2 * camera.zoom)) / gridSize) - 1
-        const visibleBottom = Math.ceil((camera.y + canvas.height / (2 * camera.zoom)) / gridSize) + 1
+        visibleLeft = Math.floor((camera.x - canvas.width / (2 * camera.zoom)) / gridSize) - 1
+        visibleRight = Math.ceil((camera.x + canvas.width / (2 * camera.zoom)) / gridSize) + 1
+        visibleTop = Math.floor((camera.y - canvas.height / (2 * camera.zoom)) / gridSize) - 1
+        visibleBottom = Math.ceil((camera.y + canvas.height / (2 * camera.zoom)) / gridSize) + 1
 
         // Draw only visible tiles
         for (let tileY = Math.max(0, visibleTop); tileY < Math.min(worldMap.height, visibleBottom); tileY++) {
