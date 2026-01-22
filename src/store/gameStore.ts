@@ -10,6 +10,7 @@ import type {
   GameSettings,
   Item,
 } from '../types/game'
+import { ProceduralGenerator } from '../engine/procedural/MapGenerator'
 
 // Helper function to unlock dependent technologies
 function unlockDependentTechs(techTree: TechNode[], unlockedTechId: string): void {
@@ -178,6 +179,10 @@ export const useGameStore = create<GameState>()(
           },
         }
       }
+
+      // Generate world map
+      const generator = new ProceduralGenerator(settings.worldSeed || Date.now())
+      state.worldMap = generator.generateMap(100, 100, settings.modifiers || [])
     }),
 
     addToInventory: (item) => {

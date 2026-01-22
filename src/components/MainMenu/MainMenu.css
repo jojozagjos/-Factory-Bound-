@@ -116,18 +116,22 @@
 }
 
 .sub-menu {
-  animation: slideIn 0.3s ease-out;
+  animation: slideInSmooth 0.3s ease-out;
 }
 
-@keyframes slideIn {
+@keyframes slideInSmooth {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(0);
   }
   to {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+.sub-menu.slide-in {
+  animation: slideInSmooth 0.3s ease-out;
 }
 
 .sub-menu h2 {
@@ -176,6 +180,50 @@
   width: 20px;
   height: 20px;
   cursor: pointer;
+}
+
+.credits-content {
+  text-align: center;
+  padding: 2rem 0;
+}
+
+.credit-section {
+  margin: 2rem 0;
+  padding: 1.5rem;
+  background: rgba(42, 42, 42, 0.3);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.credit-section h3 {
+  color: var(--accent);
+  margin: 0 0 1rem 0;
+  font-size: 1.3rem;
+}
+
+.credit-name {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0.5rem 0;
+}
+
+.credit-role {
+  color: var(--text-secondary);
+  font-size: 1.1rem;
+  margin: 0.5rem 0;
+}
+
+.game-version {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin: 0.5rem 0;
+}
+
+.copyright {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin: 0.5rem 0;
 }
 
 /* Accessibility: Focus states */

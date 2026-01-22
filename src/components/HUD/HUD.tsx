@@ -140,16 +140,6 @@ const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree
 
         <div className="resource-display">
           <div className="resource">
-            <span className="resource-icon">⚙</span>
-            <span className="resource-name">Iron</span>
-            <span className="resource-amount">0</span>
-          </div>
-          <div className="resource">
-            <span className="resource-icon">🔩</span>
-            <span className="resource-name">Copper</span>
-            <span className="resource-amount">0</span>
-          </div>
-          <div className="resource">
             <span className="resource-icon">⚡</span>
             <span className="resource-name">Power</span>
             <span className="resource-amount">100 MW</span>

@@ -8,6 +8,7 @@ import BuildMenu from './components/BuildMenu/BuildMenu'
 import TechTree from './components/TechTree/TechTree'
 import SaveManager from './components/SaveManager/SaveManager'
 import { useTutorialStore } from './store/tutorialStore'
+import { useGameStore } from './store/gameStore'
 import { useAutoSave } from './hooks/useAutoSave'
 import type { MachineType } from './types/game'
 import './App.css'
@@ -23,11 +24,23 @@ function App() {
   const [saveManagerMode, setSaveManagerMode] = useState<'save' | 'load'>('save')
   const [_selectedBuilding, setSelectedBuilding] = useState<MachineType | null>(null)
   const startTutorial = useTutorialStore(state => state.startTutorial)
+  const startGame = useGameStore(state => state.startGame)
+  const selectedMachine = useGameStore(state => state.selectedMachine)
 
   // Enable auto-save when in game
   useAutoSave(gameState === 'game')
 
   const handleStartGame = (withTutorial: boolean = false) => {
+    // Initialize game with default settings
+    startGame({
+      maxPlayers: 1,
+      difficulty: 'normal',
+      pvpEnabled: false,
+      friendlyFire: false,
+      worldSeed: Date.now(),
+      modifiers: [],
+    })
+    
     setGameState('game')
     if (withTutorial) {
       startTutorial()
@@ -44,23 +57,33 @@ function App() {
     setShowSaveManager(true)
   }
 
+  const handleOpenNodeEditor = () => {
+    // Only open node editor if a machine is selected
+    if (selectedMachine) {
+      setShowNodeEditor(true)
+    }
+  }
+
   return (
     <div className="app">
       {gameState === 'menu' && (
-        <MainMenu onStartGame={() => handleStartGame(true)} />
+        <MainMenu 
+          onStartGame={() => handleStartGame(false)}
+          onStartTutorial={() => handleStartGame(true)}
+        />
       )}
       {gameState === 'game' && (
         <>
           <GameCanvas />
           <HUD 
-            onOpenNodeEditor={() => setShowNodeEditor(true)}
+            onOpenNodeEditor={handleOpenNodeEditor}
             onReturnToMenu={() => setGameState('menu')}
             onOpenBuildMenu={() => setShowBuildMenu(true)}
             onOpenTechTree={() => setShowTechTree(true)}
             onSave={() => handleOpenSaveManager('save')}
             onLoad={() => handleOpenSaveManager('load')}
           />
-          {showNodeEditor && (
+          {showNodeEditor && selectedMachine && (
             <NodeEditor onClose={() => setShowNodeEditor(false)} />
           )}
           {showBuildMenu && (

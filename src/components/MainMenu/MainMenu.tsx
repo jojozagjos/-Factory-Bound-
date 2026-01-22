@@ -3,12 +3,14 @@ import './MainMenu.css'
 
 interface MainMenuProps {
   onStartGame: () => void
+  onStartTutorial: () => void
 }
 
-const MainMenu = ({ onStartGame }: MainMenuProps) => {
+const MainMenu = ({ onStartGame, onStartTutorial }: MainMenuProps) => {
   const [showSinglePlayer, setShowSinglePlayer] = useState(false)
   const [showMultiplayer, setShowMultiplayer] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
+  const [showCredits, setShowCredits] = useState(false)
 
   return (
     <div className="main-menu">
@@ -17,7 +19,7 @@ const MainMenu = ({ onStartGame }: MainMenuProps) => {
         <h1 className="game-title">Factory Bound</h1>
         <p className="game-subtitle">Automation • Strategy • Programming</p>
 
-        {!showSinglePlayer && !showMultiplayer && !showSettings && (
+        {!showSinglePlayer && !showMultiplayer && !showSettings && !showCredits && (
           <div className="menu-buttons">
             <button 
               className="menu-button primary"
@@ -40,20 +42,26 @@ const MainMenu = ({ onStartGame }: MainMenuProps) => {
             >
               Settings
             </button>
-            <button className="menu-button" aria-label="View Credits">
+            <button 
+              className="menu-button" 
+              onClick={() => setShowCredits(true)}
+              aria-label="View Credits"
+            >
               Credits
             </button>
           </div>
         )}
 
         {showSinglePlayer && (
-          <div className="sub-menu">
+          <div className="sub-menu slide-in">
             <h2>Single Player</h2>
             <button className="menu-button primary" onClick={onStartGame}>
               New Game
             </button>
             <button className="menu-button">Load Game</button>
-            <button className="menu-button">Tutorial</button>
+            <button className="menu-button primary" onClick={onStartTutorial}>
+              Tutorial
+            </button>
             <button 
               className="menu-button back" 
               onClick={() => setShowSinglePlayer(false)}
@@ -64,7 +72,7 @@ const MainMenu = ({ onStartGame }: MainMenuProps) => {
         )}
 
         {showMultiplayer && (
-          <div className="sub-menu">
+          <div className="sub-menu slide-in">
             <h2>Multiplayer</h2>
             <button className="menu-button primary">Host Co-op Game</button>
             <button className="menu-button">Join Co-op Game</button>
@@ -80,7 +88,7 @@ const MainMenu = ({ onStartGame }: MainMenuProps) => {
         )}
 
         {showSettings && (
-          <div className="sub-menu">
+          <div className="sub-menu slide-in">
             <h2>Settings</h2>
             <div className="settings-section">
               <h3>Graphics</h3>
@@ -135,6 +143,35 @@ const MainMenu = ({ onStartGame }: MainMenuProps) => {
             <button 
               className="menu-button back" 
               onClick={() => setShowSettings(false)}
+            >
+              Back
+            </button>
+          </div>
+        )}
+
+        {showCredits && (
+          <div className="sub-menu slide-in">
+            <h2>Credits</h2>
+            <div className="credits-content">
+              <div className="credit-section">
+                <h3>Development</h3>
+                <p className="credit-name">Joseph Slade</p>
+                <p className="credit-role">Lead Developer & Designer</p>
+              </div>
+              
+              <div className="credit-section">
+                <h3>Special Thanks</h3>
+                <p>To all the players and supporters of Factory Bound</p>
+              </div>
+              
+              <div className="credit-section">
+                <p className="game-version">Version 0.1.0</p>
+                <p className="copyright">© 2026 Factory Bound. All rights reserved.</p>
+              </div>
+            </div>
+            <button 
+              className="menu-button back" 
+              onClick={() => setShowCredits(false)}
             >
               Back
             </button>
