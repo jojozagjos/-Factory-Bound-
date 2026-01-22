@@ -6,9 +6,11 @@ interface HUDProps {
   onReturnToMenu: () => void
   onOpenBuildMenu: () => void
   onOpenTechTree: () => void
+  onSave: () => void
+  onLoad: () => void
 }
 
-const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree }: HUDProps) => {
+const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree, onSave, onLoad }: HUDProps) => {
   const currentPlayer = useGameStore(state => state.currentPlayer)
   const selectedMachine = useGameStore(state => state.selectedMachine)
   const isPaused = useGameStore(state => state.isPaused)
@@ -42,6 +44,22 @@ const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree
             aria-label={isPaused ? 'Resume game' : 'Pause game'}
           >
             {isPaused ? '▶' : '⏸'}
+          </button>
+          <button 
+            className="control-btn"
+            onClick={onSave}
+            aria-label="Save game"
+            title="Save game"
+          >
+            💾
+          </button>
+          <button 
+            className="control-btn"
+            onClick={onLoad}
+            aria-label="Load game"
+            title="Load game"
+          >
+            📁
           </button>
           <button 
             className="control-btn"
