@@ -354,7 +354,7 @@ const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree
                   <h3>Graphics</h3>
                   <label>
                     <span>Quality</span>
-                    <select>
+                    <select defaultValue="high">
                       <option>Low</option>
                       <option>Medium</option>
                       <option>High</option>
@@ -377,6 +377,7 @@ const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree
                     <input type="range" min="0" max="100" defaultValue="80" />
                   </label>
                 </div>
+                <p className="settings-note">Note: Settings are currently visual only. Full settings system coming soon.</p>
                 <button 
                   className="menu-btn" 
                   onClick={() => setShowSettings(false)}

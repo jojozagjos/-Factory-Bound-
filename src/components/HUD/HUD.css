@@ -447,6 +447,16 @@
   color: var(--text-primary);
 }
 
+.settings-note {
+  margin: 1rem 0;
+  padding: 0.75rem;
+  background: rgba(233, 69, 96, 0.1);
+  border-left: 3px solid var(--accent);
+  border-radius: 4px;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
 /* Player List Panel */
 .player-list-panel {
   position: absolute;

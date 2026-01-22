@@ -19,6 +19,12 @@ const Minimap = ({ width = 200, height = 200 }: MinimapProps) => {
   const [mapZoom, setMapZoom] = useState(1)
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
+  
+  // Constants for better code clarity
+  const ZOOM_SPEED = 0.001
+  const MIN_ZOOM = 0.5
+  const MAX_ZOOM = 3
+  const DRAG_SENSITIVITY = 0.1 // Reduces drag speed for smoother control
 
   // Handle mouse wheel for zoom
   useEffect(() => {
@@ -27,8 +33,8 @@ const Minimap = ({ width = 200, height = 200 }: MinimapProps) => {
 
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault()
-      const zoomDelta = -e.deltaY * 0.001
-      setMapZoom(prev => Math.max(0.5, Math.min(3, prev + zoomDelta)))
+      const zoomDelta = -e.deltaY * ZOOM_SPEED
+      setMapZoom(prev => Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, prev + zoomDelta)))
     }
 
     container.addEventListener('wheel', handleWheel, { passive: false })
@@ -95,8 +101,8 @@ const Minimap = ({ width = 200, height = 200 }: MinimapProps) => {
     const baseScale = Math.min(width / mapWidth, height / mapHeight) * 0.9
     const scale = baseScale * mapZoom
 
-    const offsetX = (width - mapWidth * scale) / 2 + mapOffset.x * 0.1
-    const offsetY = (height - mapHeight * scale) / 2 + mapOffset.y * 0.1
+    const offsetX = (width - mapWidth * scale) / 2 + mapOffset.x * DRAG_SENSITIVITY
+    const offsetY = (height - mapHeight * scale) / 2 + mapOffset.y * DRAG_SENSITIVITY
 
     // Helper to convert world coords to minimap coords
     const toMinimapX = (x: number) => (x - minX) * scale + offsetX
