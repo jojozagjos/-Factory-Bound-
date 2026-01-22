@@ -11,6 +11,7 @@ import LoginScreen from './components/LoginScreen/LoginScreen'
 import { useTutorialStore } from './store/tutorialStore'
 import { useGameStore } from './store/gameStore'
 import { useAutoSave } from './hooks/useAutoSave'
+import type { GameSession, GameMode } from './types/game'
 import './App.css'
 
 type GameState = 'login' | 'menu' | 'game' | 'editor'
@@ -50,8 +51,8 @@ function App() {
     setGameState('menu')
   }
 
-  const handleStartGame = (withTutorial: boolean = false) => {
-    // Initialize game with default settings
+  const handleStartGame = (gameMode: GameMode) => {
+    // Initialize game with selected mode
     startGame({
       maxPlayers: 1,
       difficulty: 'normal',
@@ -62,9 +63,29 @@ function App() {
     })
     
     setGameState('game')
-    if (withTutorial) {
-      startTutorial()
-    }
+    // Store game mode for future use (e.g., victory conditions)
+    console.log('Starting game with mode:', gameMode)
+  }
+
+  const handleStartTutorial = () => {
+    // Initialize game with default settings for tutorial
+    startGame({
+      maxPlayers: 1,
+      difficulty: 'easy',
+      pvpEnabled: false,
+      friendlyFire: false,
+      worldSeed: Date.now(),
+      modifiers: [],
+    })
+    
+    setGameState('game')
+    startTutorial()
+  }
+
+  const handleStartMultiplayer = (session: GameSession) => {
+    // Initialize game with multiplayer session settings
+    startGame(session.settings)
+    setGameState('game')
   }
 
   const handleOpenSaveManager = (mode: 'save' | 'load') => {
@@ -86,8 +107,9 @@ function App() {
       )}
       {gameState === 'menu' && (
         <MainMenu 
-          onStartGame={() => handleStartGame(false)}
-          onStartTutorial={() => handleStartGame(true)}
+          onStartGame={handleStartGame}
+          onStartTutorial={handleStartTutorial}
+          onStartMultiplayer={handleStartMultiplayer}
         />
       )}
       {gameState === 'game' && (

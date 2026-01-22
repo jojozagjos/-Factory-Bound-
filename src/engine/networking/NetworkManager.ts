@@ -101,11 +101,27 @@ export class NetworkManager {
   }
 
   // Join an existing session
-  joinSession(sessionId: string, player: Player): Promise<GameSession> {
+  joinSession(sessionId: string): Promise<GameSession> {
     return new Promise((resolve, reject) => {
       if (!this.socket) {
         reject(new Error('Not connected to server'))
         return
+      }
+
+      const player: Player = {
+        id: 'player_' + Date.now(),
+        username: 'Player',
+        position: { x: 0, y: 0 },
+        inventory: [],
+        health: 100,
+        maxHealth: 100,
+        stats: {
+          level: 1,
+          experience: 0,
+          prestigeLevel: 0,
+          unlockedTech: [],
+          completedResearch: [],
+        },
       }
 
       this.socket.emit('join_session', { sessionId, player }, (result: { success: boolean; session?: GameSession; error?: string }) => {
@@ -114,6 +130,61 @@ export class NetworkManager {
           resolve(result.session)
         } else {
           reject(new Error(result.error || 'Failed to join session'))
+        }
+      })
+    })
+  }
+
+  // List available sessions
+  listSessions(mode: 'coop' | 'pvp'): Promise<GameSession[]> {
+    return new Promise((resolve, reject) => {
+      if (!this.socket) {
+        reject(new Error('Not connected to server'))
+        return
+      }
+
+      this.socket.emit('list_sessions', { mode }, (result: { success: boolean; sessions?: GameSession[]; error?: string }) => {
+        if (result.success && result.sessions) {
+          resolve(result.sessions)
+        } else {
+          reject(new Error(result.error || 'Failed to list sessions'))
+        }
+      })
+    })
+  }
+
+  // Start a session (for host)
+  startSession(sessionId: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!this.socket) {
+        reject(new Error('Not connected to server'))
+        return
+      }
+
+      this.socket.emit('start_session', { sessionId }, (result: { success: boolean; error?: string }) => {
+        if (result.success) {
+          resolve()
+        } else {
+          reject(new Error(result.error || 'Failed to start session'))
+        }
+      })
+    })
+  }
+
+  // Find match (for ranked or quick match)
+  findMatch(isPvP: boolean): Promise<GameSession> {
+    return new Promise((resolve, reject) => {
+      if (!this.socket) {
+        reject(new Error('Not connected to server'))
+        return
+      }
+
+      this.socket.emit('find_match', { isPvP }, (result: { success: boolean; session?: GameSession; error?: string }) => {
+        if (result.success && result.session) {
+          this.currentSession = result.session
+          resolve(result.session)
+        } else {
+          reject(new Error(result.error || 'No matches found'))
         }
       })
     })
