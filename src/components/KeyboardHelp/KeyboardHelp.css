@@ -1,14 +1,14 @@
 .keyboard-help-button {
   position: fixed;
   bottom: 20px;
-  left: 20px;
-  width: 40px;
-  height: 40px;
+  right: 20px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
-  background: rgba(59, 130, 246, 0.9);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.95), rgba(37, 99, 235, 0.95));
   color: white;
   border: 2px solid rgba(255, 255, 255, 0.3);
-  font-size: 24px;
+  font-size: 28px;
   font-weight: bold;
   cursor: pointer;
   z-index: 1000;
@@ -17,11 +17,13 @@
   justify-content: center;
   transition: all 0.3s ease;
   backdrop-filter: blur(10px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
 }
 
 .keyboard-help-button:hover {
-  background: rgba(37, 99, 235, 1);
-  transform: scale(1.1);
+  background: linear-gradient(135deg, rgba(37, 99, 235, 1), rgba(29, 78, 216, 1));
+  transform: scale(1.1) rotate(10deg);
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.6);
 }
 
 .keyboard-help-overlay {

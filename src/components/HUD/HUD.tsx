@@ -231,24 +231,6 @@ const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree
             </div>
           </div>
         )}
-
-        <div className="resource-display">
-          <div className="resource">
-            <span className="resource-icon">⚙</span>
-            <span className="resource-name">Iron Plate</span>
-            <span className="resource-amount">{getResourceCount('iron_plate')}</span>
-          </div>
-          <div className="resource">
-            <span className="resource-icon">🔩</span>
-            <span className="resource-name">Copper</span>
-            <span className="resource-amount">{getResourceCount('copper_plate')}</span>
-          </div>
-          <div className="resource">
-            <span className="resource-icon">⚡</span>
-            <span className="resource-name">Circuits</span>
-            <span className="resource-amount">{getResourceCount('electronic_circuit')}</span>
-          </div>
-        </div>
       </div>
 
       {/* Inventory Panel */}
@@ -264,14 +246,49 @@ const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree
               ✕
             </button>
           </div>
-          <div className="inventory-grid">
-            {currentPlayer?.inventory.map((item, index) => (
-              <div key={index} className="inventory-item">
-                <div className="item-icon">{item.icon || '📦'}</div>
-                <div className="item-name">{item.name}</div>
-                <div className="item-quantity">{item.quantity}</div>
+          <div className="inventory-sections">
+            <div className="inventory-section">
+              <h3>Resources</h3>
+              <div className="resource-list">
+                <div className="resource-item">
+                  <span className="resource-icon">⚙</span>
+                  <span className="resource-name">Iron Plate</span>
+                  <span className="resource-amount">{getResourceCount('iron_plate')}</span>
+                </div>
+                <div className="resource-item">
+                  <span className="resource-icon">🔩</span>
+                  <span className="resource-name">Copper Plate</span>
+                  <span className="resource-amount">{getResourceCount('copper_plate')}</span>
+                </div>
+                <div className="resource-item">
+                  <span className="resource-icon">⚡</span>
+                  <span className="resource-name">Circuits</span>
+                  <span className="resource-amount">{getResourceCount('electronic_circuit')}</span>
+                </div>
+                <div className="resource-item">
+                  <span className="resource-icon">⚙</span>
+                  <span className="resource-name">Iron Gear</span>
+                  <span className="resource-amount">{getResourceCount('iron_gear')}</span>
+                </div>
+                <div className="resource-item">
+                  <span className="resource-icon">🪨</span>
+                  <span className="resource-name">Stone</span>
+                  <span className="resource-amount">{getResourceCount('stone')}</span>
+                </div>
               </div>
-            )) ?? <p className="empty-inventory">Inventory is empty</p>}
+            </div>
+            <div className="inventory-section">
+              <h3>All Items</h3>
+              <div className="inventory-grid">
+                {currentPlayer?.inventory.map((item, index) => (
+                  <div key={index} className="inventory-item">
+                    <div className="item-icon">{item.icon || '📦'}</div>
+                    <div className="item-name">{item.name}</div>
+                    <div className="item-quantity">{item.quantity}</div>
+                  </div>
+                )) ?? <p className="empty-inventory">Inventory is empty</p>}
+              </div>
+            </div>
           </div>
         </div>
       )}

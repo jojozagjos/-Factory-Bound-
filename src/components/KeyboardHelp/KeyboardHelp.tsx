@@ -6,16 +6,15 @@ const KeyboardHelp = () => {
 
   const shortcuts = [
     { category: 'Camera Controls', items: [
-      { keys: ['W', 'A', 'S', 'D'], description: 'Pan camera' },
-      { keys: ['Arrow Keys'], description: 'Pan camera' },
+      { keys: ['Right Click + Drag'], description: 'Pan camera' },
+      { keys: ['Middle Click + Drag'], description: 'Pan camera' },
       { keys: ['Mouse Wheel'], description: 'Zoom in/out' },
       { keys: ['+', '-'], description: 'Zoom in/out' },
       { keys: ['0'], description: 'Reset camera' },
-      { keys: ['Shift + Click'], description: 'Pan camera (drag)' },
-      { keys: ['Middle Click'], description: 'Pan camera (drag)' },
     ]},
     { category: 'Game Controls', items: [
       { keys: ['Space'], description: 'Pause/Resume game' },
+      { keys: ['I'], description: 'Toggle inventory' },
       { keys: ['B'], description: 'Toggle build menu' },
       { keys: ['T'], description: 'Toggle tech tree' },
       { keys: ['N'], description: 'Toggle node editor' },
@@ -24,10 +23,11 @@ const KeyboardHelp = () => {
     ]},
     { category: 'Multiplayer', items: [
       { keys: ['Enter'], description: 'Open chat / Send message' },
+      { keys: ['Tab'], description: 'Toggle player list' },
       { keys: ['Esc'], description: 'Close chat' },
     ]},
     { category: 'Building', items: [
-      { keys: ['Click'], description: 'Select machine / Place building' },
+      { keys: ['Left Click'], description: 'Select machine / Place building' },
       { keys: ['Esc'], description: 'Cancel building mode' },
       { keys: ['Delete'], description: 'Destroy selected machine' },
     ]},

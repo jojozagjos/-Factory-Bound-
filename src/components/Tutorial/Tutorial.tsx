@@ -8,8 +8,21 @@ const Tutorial = () => {
   const nextStep = useTutorialStore(state => state.nextStep)
   const previousStep = useTutorialStore(state => state.previousStep)
   const skipTutorial = useTutorialStore(state => state.skipTutorial)
+  const completeTutorial = useTutorialStore(state => state.completeTutorial)
   const currentStepIndex = useTutorialStore(state => state.currentStep)
   const overlayRef = useRef<HTMLDivElement>(null)
+
+  const handleNextStep = () => {
+    const totalSteps = 16
+    if (currentStepIndex === totalSteps - 1) {
+      // Last step - complete tutorial
+      completeTutorial()
+      // Dispatch custom event to return to menu
+      window.dispatchEvent(new CustomEvent('tutorialComplete'))
+    } else {
+      nextStep()
+    }
+  }
 
   useEffect(() => {
     // Highlight target element if specified
@@ -122,9 +135,9 @@ const Tutorial = () => {
             </button>
             <button
               className="tutorial-btn tutorial-btn-primary"
-              onClick={nextStep}
+              onClick={handleNextStep}
             >
-              {currentStepIndex === totalSteps - 1 ? 'Finish' : 'Next →'}
+              {currentStepIndex === totalSteps - 1 ? 'Finish Tutorial' : 'Next →'}
             </button>
           </div>
         </div>

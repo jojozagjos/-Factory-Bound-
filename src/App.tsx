@@ -58,6 +58,16 @@ function App() {
   // Enable auto-save when in game
   useAutoSave(gameState === 'game')
 
+  // Listen for tutorial completion
+  useEffect(() => {
+    const handleTutorialComplete = () => {
+      handleReturnToMenu()
+    }
+    
+    window.addEventListener('tutorialComplete', handleTutorialComplete)
+    return () => window.removeEventListener('tutorialComplete', handleTutorialComplete)
+  }, [])
+
   // Apply screen shake effect
   useEffect(() => {
     if (shakeOffset.x !== 0 || shakeOffset.y !== 0) {
