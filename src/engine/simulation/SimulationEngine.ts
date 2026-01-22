@@ -1,12 +1,20 @@
 import type { Machine, Enemy, Projectile } from '../../types/game'
+import { ResourceSystem } from '../../systems/ResourceSystem'
+import { CombatSystem } from '../../systems/CombatSystem'
 
 export class SimulationEngine {
   private tickCount = 0
   private readonly tickRate = 60 // 60 ticks per second
   private lastUpdateTime = 0
+  private resourceSystem: ResourceSystem
+  private combatSystem: CombatSystem
+  private turretCooldowns: Map<string, number>
 
   constructor() {
     this.tickCount = 0
+    this.resourceSystem = new ResourceSystem()
+    this.combatSystem = new CombatSystem()
+    this.turretCooldowns = new Map()
   }
 
   // Deterministic update - same inputs always produce same outputs
@@ -39,6 +47,13 @@ export class SimulationEngine {
     // Update machines
     machines.forEach(machine => {
       this.updateMachine(machine, machines)
+    })
+
+    // Update turrets separately (they need enemies and projectiles)
+    machines.forEach(machine => {
+      if (machine.type === 'turret' && machine.power.connected && machine.power.available >= machine.power.required) {
+        this.updateTurret(machine, enemies, projectiles)
+      }
     })
 
     // Update enemies
@@ -74,13 +89,14 @@ export class SimulationEngine {
         this.updateInserter(machine, allMachines)
         break
       case 'turret':
-        this.updateTurret()
+        // Turret needs access to enemies and projectiles
+        // This will be handled in the tick method
         break
     }
 
     // Execute node program if present
     if (machine.nodeProgram) {
-      this.executeNodeProgram()
+      this.executeNodeProgram(machine, allMachines)
     }
   }
 
@@ -106,28 +122,13 @@ export class SimulationEngine {
   private updateAssembler(machine: Machine): void {
     if (!machine.recipe) return
 
-    // Check if we have ingredients
-    const hasIngredients = machine.recipe.inputs.every(input => {
-      const item = machine.inventory.find(i => i.name === input.name)
-      return item && item.quantity >= input.quantity
-    })
-
-    if (hasIngredients) {
+    // Check if we have ingredients using ResourceSystem
+    if (this.resourceSystem.hasIngredients(machine)) {
       // Consume ingredients
-      machine.recipe.inputs.forEach(input => {
-        const item = machine.inventory.find(i => i.name === input.name)!
-        item.quantity -= input.quantity
-      })
-
+      this.resourceSystem.consumeIngredients(machine)
+      
       // Produce outputs
-      machine.recipe.outputs.forEach(output => {
-        const existingItem = machine.inventory.find(i => i.name === output.name)
-        if (existingItem) {
-          existingItem.quantity += output.quantity
-        } else {
-          machine.inventory.push({ ...output })
-        }
-      })
+      this.resourceSystem.produceOutputs(machine)
     }
   }
 
@@ -165,26 +166,42 @@ export class SimulationEngine {
     }
   }
 
-  private updateTurret(): void {
-    // Turret logic handled separately in combat system
+  private updateTurret(machine: Machine, enemies: Enemy[], projectiles: Projectile[]): void {
+    // Check cooldown
+    const cooldown = this.turretCooldowns.get(machine.id) || 0
+    if (cooldown > 0) {
+      this.turretCooldowns.set(machine.id, cooldown - 1)
+      return
+    }
+
+    // Find nearest enemy in range
+    const target = this.combatSystem.findTurretTarget(machine, enemies, 15)
+    if (!target) return
+
+    // Check if turret has ammo
+    if (!this.combatSystem.consumeAmmo(machine)) return
+
+    // Create projectile
+    const projectile = this.combatSystem.createProjectile(machine, target, 20)
+    projectiles.push(projectile)
+
+    // Set cooldown (60 ticks = 1 second)
+    this.turretCooldowns.set(machine.id, 30) // 0.5 second cooldown
   }
 
   private updateEnemy(enemy: Enemy, machines: Machine[]): void {
-    // Simple AI: move toward nearest machine
-    if (enemy.target) {
-      const target = machines.find(m => m.id === enemy.target)
-      if (target) {
-        const dx = target.position.x - enemy.position.x
-        const dy = target.position.y - enemy.position.y
-        const distance = Math.sqrt(dx * dx + dy * dy)
+    // Find nearest machine using combat system
+    const target = this.combatSystem.findNearestTarget(enemy, machines)
+    if (!target) return
 
-        if (distance > 1) {
-          enemy.position.x += (dx / distance) * 0.1
-          enemy.position.y += (dy / distance) * 0.1
-        } else {
-          // Attack
-          target.health -= 1
-        }
+    // Move toward target
+    this.combatSystem.moveEnemyToward(enemy, target.position)
+
+    // Check if in attack range
+    if (this.combatSystem.isInAttackRange(enemy, target.position)) {
+      // Attack machine (damage applied every second)
+      if (this.tickCount % 60 === 0) {
+        this.combatSystem.attackMachine(enemy, target)
       }
     }
   }
@@ -194,21 +211,28 @@ export class SimulationEngine {
     enemies: Enemy[], 
     removedEntities: string[]
   ): void {
-    // Move projectile
-    projectile.position.x += projectile.velocity.vx || 0
-    projectile.position.y += projectile.velocity.vy || 0
+    // Move projectile using combat system
+    this.combatSystem.updateProjectile(projectile)
 
     // Check collision with enemies
-    enemies.forEach(enemy => {
-      const dx = enemy.position.x - projectile.position.x
-      const dy = enemy.position.y - projectile.position.y
-      const distance = Math.sqrt(dx * dx + dy * dy)
-
-      if (distance < 1) {
-        enemy.health -= projectile.damage
+    for (const enemy of enemies) {
+      if (this.combatSystem.checkProjectileHit(projectile, enemy)) {
+        const killed = this.combatSystem.damageEnemy(enemy, projectile.damage)
         removedEntities.push(projectile.id)
+        
+        // Mark enemy for removal if killed
+        if (killed) {
+          // Enemy will be removed in cleanupDeadEntities
+        }
+        break
       }
-    })
+    }
+
+    // Check if out of bounds (remove if so)
+    // Assume max map size of 1000x1000
+    if (this.combatSystem.isProjectileOutOfBounds(projectile, 1000, 1000)) {
+      removedEntities.push(projectile.id)
+    }
   }
 
   private cleanupDeadEntities(
@@ -232,10 +256,74 @@ export class SimulationEngine {
     }
   }
 
-  private executeNodeProgram(): void {
+  private executeNodeProgram(machine: Machine, _allMachines: Machine[]): void {
     // Execute visual programming logic
-    // This would evaluate the node graph and control machine behavior
-    // Simplified for now
+    if (!machine.nodeProgram) return
+
+    // Simple node execution - evaluate each node
+    const { nodes, connections } = machine.nodeProgram
+    
+    // Store node outputs
+    const nodeOutputs: Map<string, unknown> = new Map()
+
+    // Process nodes in order (simplified - real impl would need topological sort)
+    nodes.forEach(node => {
+      switch (node.type) {
+        case 'input':
+          // Sensor nodes - read machine state
+          if (node.data.sensor === 'inventory_count') {
+            nodeOutputs.set(node.id, machine.inventory.reduce((sum, item) => sum + item.quantity, 0))
+          } else if (node.data.sensor === 'power_status') {
+            nodeOutputs.set(node.id, machine.power.connected ? 1 : 0)
+          } else if (node.data.sensor === 'health') {
+            nodeOutputs.set(node.id, machine.health / machine.maxHealth)
+          }
+          break
+
+        case 'logic':
+          // Logic nodes - perform operations
+          const inputs = connections
+            .filter(conn => conn.to === node.id)
+            .map(conn => nodeOutputs.get(conn.from) as number || 0)
+          
+          if (node.data.operation === 'compare_gt') {
+            nodeOutputs.set(node.id, inputs[0] > (node.data.value as number || 0) ? 1 : 0)
+          } else if (node.data.operation === 'compare_lt') {
+            nodeOutputs.set(node.id, inputs[0] < (node.data.value as number || 0) ? 1 : 0)
+          } else if (node.data.operation === 'and') {
+            nodeOutputs.set(node.id, inputs.every(v => v > 0) ? 1 : 0)
+          } else if (node.data.operation === 'or') {
+            nodeOutputs.set(node.id, inputs.some(v => v > 0) ? 1 : 0)
+          }
+          break
+
+        case 'output':
+          // Action nodes - control machine behavior
+          const outputInputs = connections
+            .filter(conn => conn.to === node.id)
+            .map(conn => nodeOutputs.get(conn.from) as number || 0)
+          
+          const shouldActivate = outputInputs.some(v => v > 0)
+          
+          if (node.data.action === 'enable_machine') {
+            // Enable/disable machine based on input
+            machine.power.required = shouldActivate ? this.getDefaultPowerRequirement(machine.type) : 0
+          }
+          break
+      }
+    })
+  }
+
+  private getDefaultPowerRequirement(type: string): number {
+    const powerMap: Record<string, number> = {
+      miner: 90,
+      assembler: 150,
+      smelter: 180,
+      belt: 5,
+      inserter: 13,
+      turret: 40,
+    }
+    return powerMap[type] || 0
   }
 
   private getNextPosition(pos: { x: number; y: number }, rotation: number): { x: number; y: number } {

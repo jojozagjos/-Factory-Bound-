@@ -209,3 +209,119 @@ export interface PlayerRanking {
   losses: number
   prestigeLevel: number
 }
+
+// Tutorial System
+export interface TutorialStep {
+  id: string
+  title: string
+  description: string
+  target?: string // CSS selector or element ID to highlight
+  position: 'top' | 'bottom' | 'left' | 'right' | 'center'
+  objective?: string
+  completionCondition?: (state: GameState) => boolean
+}
+
+export interface TutorialState {
+  isActive: boolean
+  currentStep: number
+  completedSteps: string[]
+  skipped: boolean
+}
+
+// Building System
+export interface BuildingGhost {
+  type: MachineType
+  position: Position
+  rotation: number
+  isValid: boolean // Can be placed at this location
+}
+
+export interface BuildingCost {
+  machineType: MachineType
+  costs: Item[]
+  requiredTech?: string
+}
+
+// Combat System
+export enum EnemyType {
+  BITER = 'biter',
+  SPITTER = 'spitter',
+  BEHEMOTH = 'behemoth',
+}
+
+export interface EnemyStats {
+  type: EnemyType
+  health: number
+  maxHealth: number
+  damage: number
+  speed: number
+  range: number
+}
+
+export interface CombatEvent {
+  id: string
+  type: 'damage' | 'death' | 'spawn'
+  timestamp: number
+  sourceId: string
+  targetId?: string
+  data: Record<string, unknown>
+}
+
+// Save System
+export interface SaveMetadata {
+  id: string
+  name: string
+  timestamp: number
+  playtime: number
+  level: number
+  version: string
+}
+
+export interface SaveSlot {
+  metadata: SaveMetadata
+  data: SaveData
+}
+
+// Game Mode
+export enum GameMode {
+  SURVIVAL = 'survival',
+  PRODUCTION = 'production',
+  EXPLORATION = 'exploration',
+  CUSTOM = 'custom',
+}
+
+export interface VictoryCondition {
+  type: GameMode
+  description: string
+  isComplete: (state: GameState) => boolean
+}
+
+export interface GameState {
+  mode: GameMode
+  startTime: number
+  playtime: number
+  isPaused: boolean
+  isGameOver: boolean
+  victoryAchieved: boolean
+}
+
+// Notifications
+export interface Notification {
+  id: string
+  type: 'info' | 'success' | 'warning' | 'error' | 'achievement'
+  title: string
+  message: string
+  duration?: number
+  timestamp: number
+}
+
+// Achievement System
+export interface Achievement {
+  id: string
+  name: string
+  description: string
+  unlocked: boolean
+  unlockedAt?: number
+  icon?: string
+  category: 'building' | 'combat' | 'research' | 'production' | 'exploration'
+}
