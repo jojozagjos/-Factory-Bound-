@@ -7,7 +7,8 @@ import type {
   TechNode, 
   GameSession,
   SaveData,
-  GameSettings
+  GameSettings,
+  Item,
 } from '../types/game'
 
 // Helper function to unlock dependent technologies
@@ -54,6 +55,10 @@ interface GameState {
   unlockTech: (techId: string) => void
   saveGame: () => SaveData
   loadGame: (data: SaveData) => void
+  startGame: (settings: GameSettings) => void
+  addToInventory: (item: Item) => boolean
+  removeFromInventory: (itemName: string, quantity: number) => boolean
+  gainExperience: (amount: number) => void
 }
 
 export const useGameStore = create<GameState>()(
@@ -142,6 +147,114 @@ export const useGameStore = create<GameState>()(
       state.worldMap = data.world
       state.machines = data.machines
       state.techTree = data.techTree
+    }),
+
+    startGame: (settings) => set((state) => {
+      // Initialize new game session
+      state.session = {
+        id: `session_${Date.now()}`,
+        mode: settings.pvpEnabled ? 'pvp' : 'coop',
+        players: [],
+        host: 'local',
+        state: 'active',
+        settings,
+      }
+      
+      // Initialize player if not exists
+      if (!state.currentPlayer) {
+        state.currentPlayer = {
+          id: 'player_1',
+          username: 'Player',
+          position: { x: 50, y: 50 },
+          inventory: [],
+          health: 100,
+          maxHealth: 100,
+          stats: {
+            level: 1,
+            experience: 0,
+            prestigeLevel: 0,
+            unlockedTech: [],
+            completedResearch: [],
+          },
+        }
+      }
+    }),
+
+    addToInventory: (item) => {
+      const state = get()
+      if (!state.currentPlayer) return false
+
+      const stackLimit = 100
+      const existingItem = state.currentPlayer.inventory.find(i => i.name === item.name)
+
+      if (existingItem) {
+        const spaceAvailable = stackLimit - existingItem.quantity
+        const amountToAdd = Math.min(item.quantity, spaceAvailable)
+        
+        if (amountToAdd > 0) {
+          set((state) => {
+            const player = state.currentPlayer
+            if (player) {
+              const existing = player.inventory.find(i => i.name === item.name)
+              if (existing) {
+                existing.quantity += amountToAdd
+              }
+            }
+          })
+          return amountToAdd === item.quantity
+        }
+        return false
+      } else {
+        set((state) => {
+          const player = state.currentPlayer
+          if (player) {
+            const amountToAdd = Math.min(item.quantity, stackLimit)
+            player.inventory.push({
+              ...item,
+              quantity: amountToAdd,
+            })
+          }
+        })
+        return item.quantity <= stackLimit
+      }
+    },
+
+    removeFromInventory: (itemName, quantity) => {
+      const state = get()
+      if (!state.currentPlayer) return false
+
+      const item = state.currentPlayer.inventory.find(i => i.name === itemName)
+      if (!item || item.quantity < quantity) return false
+
+      set((state) => {
+        const player = state.currentPlayer
+        if (player) {
+          const itemToRemove = player.inventory.find(i => i.name === itemName)
+          if (itemToRemove) {
+            itemToRemove.quantity -= quantity
+            if (itemToRemove.quantity <= 0) {
+              const index = player.inventory.indexOf(itemToRemove)
+              player.inventory.splice(index, 1)
+            }
+          }
+        }
+      })
+
+      return true
+    },
+
+    gainExperience: (amount) => set((state) => {
+      const player = state.currentPlayer
+      if (!player) return
+
+      player.stats.experience += amount
+
+      // Level up calculation
+      const xpForNextLevel = Math.floor(100 * Math.pow(1.5, player.stats.level))
+      while (player.stats.experience >= xpForNextLevel) {
+        player.stats.level++
+        player.stats.experience -= xpForNextLevel
+      }
     }),
   }))
 )

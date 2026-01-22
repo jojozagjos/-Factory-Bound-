@@ -1,0 +1,254 @@
+.tech-tree-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.tech-tree {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border: 2px solid #0f3460;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 1200px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
+  animation: slideUp 0.3s ease-out;
+}
+
+.tech-tree-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #0f3460;
+}
+
+.tech-tree-header h2 {
+  margin: 0;
+  color: #e94560;
+  font-size: 1.5rem;
+}
+
+.close-btn {
+  background: transparent;
+  border: 1px solid #533483;
+  color: #888;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1.2rem;
+  transition: all 0.2s;
+}
+
+.close-btn:hover {
+  background: #533483;
+  color: #fff;
+  border-color: #7b68a8;
+}
+
+.tech-tree-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.tech-paradigm {
+  background: rgba(15, 52, 96, 0.2);
+  border: 1px solid #0f3460;
+  border-radius: 8px;
+  padding: 20px;
+}
+
+.paradigm-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #0f3460;
+}
+
+.paradigm-icon {
+  font-size: 2rem;
+}
+
+.paradigm-header h3 {
+  margin: 0;
+  color: #fff;
+  font-size: 1.3rem;
+  text-transform: capitalize;
+}
+
+.tech-nodes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 15px;
+}
+
+.tech-node {
+  background: rgba(0, 0, 0, 0.3);
+  border: 2px solid #0f3460;
+  border-radius: 8px;
+  padding: 15px;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.tech-node.available:hover {
+  background: rgba(15, 52, 96, 0.5);
+  border-color: #533483;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(83, 52, 131, 0.4);
+}
+
+.tech-node.researched {
+  background: rgba(46, 213, 115, 0.1);
+  border-color: #2ed573;
+}
+
+.tech-node.locked {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.tech-node-name {
+  font-weight: 600;
+  color: #fff;
+  font-size: 1.1rem;
+  margin-bottom: 8px;
+}
+
+.tech-node-description {
+  color: #aaa;
+  font-size: 0.9rem;
+  margin-bottom: 12px;
+  line-height: 1.4;
+}
+
+.tech-node-cost {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.cost-badge {
+  background: rgba(233, 69, 96, 0.2);
+  color: #e94560;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  text-transform: capitalize;
+}
+
+.researched-badge {
+  background: rgba(46, 213, 115, 0.2);
+  color: #2ed573;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  text-align: center;
+  font-weight: 600;
+}
+
+.dependencies-badge {
+  background: rgba(255, 193, 7, 0.2);
+  color: #ffc107;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  margin-top: 8px;
+}
+
+.tech-tree-footer {
+  padding: 15px 20px;
+  border-top: 1px solid #0f3460;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.tech-tree-hint {
+  color: #888;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Scrollbar styling */
+.tech-tree-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.tech-tree-content::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.tech-tree-content::-webkit-scrollbar-thumb {
+  background: #533483;
+  border-radius: 4px;
+}
+
+.tech-tree-content::-webkit-scrollbar-thumb:hover {
+  background: #7b68a8;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .tech-tree {
+    width: 95%;
+    max-height: 90vh;
+  }
+
+  .tech-nodes {
+    grid-template-columns: 1fr;
+  }
+
+  .paradigm-header h3 {
+    font-size: 1.1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tech-tree-overlay,
+  .tech-tree,
+  .tech-node {
+    animation: none;
+  }
+
+  .tech-node.available:hover {
+    transform: none;
+  }
+}
