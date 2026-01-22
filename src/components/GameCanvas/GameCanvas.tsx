@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useGameStore } from '../../store/gameStore'
+import CameraControls, { type CameraState } from '../CameraControls/CameraControls'
 import type { MachineType } from '../../types/game'
 import './GameCanvas.css'
 
@@ -14,6 +15,7 @@ const GameCanvas = () => {
   const selectMachine = useGameStore(state => state.selectMachine)
   const [buildingMode, setBuildingMode] = useState<MachineType | null>(null)
   const [ghostPosition, setGhostPosition] = useState<{ x: number; y: number } | null>(null)
+  const [camera, setCamera] = useState<CameraState>({ x: 0, y: 0, zoom: 1 })
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -49,13 +51,19 @@ const GameCanvas = () => {
         ctx.stroke()
       }
 
+      // Apply camera transform
+      ctx.save()
+      ctx.translate(canvas.width / 2, canvas.height / 2)
+      ctx.scale(camera.zoom, camera.zoom)
+      ctx.translate(-camera.x, -camera.y)
+
       // Draw world tiles (if map exists)
       if (worldMap) {
         // Convert Map to array for iteration
         const tilesArray = Array.from(worldMap.tiles.values())
         tilesArray.forEach(tile => {
-          const screenX = tile.x * gridSize + canvas.width / 2
-          const screenY = tile.y * gridSize + canvas.height / 2
+          const screenX = tile.x * gridSize
+          const screenY = tile.y * gridSize
 
           // Draw tile based on type
           switch (tile.type) {
@@ -294,14 +302,21 @@ const GameCanvas = () => {
   }, [])
 
   return (
-    <canvas 
-      ref={canvasRef} 
-      className="game-canvas"
-      onClick={handleCanvasClick}
-      onMouseMove={handleCanvasMouseMove}
-      aria-label="Game world canvas"
-      style={{ cursor: buildingMode ? 'crosshair' : 'default' }}
-    />
+    <>
+      <canvas 
+        ref={canvasRef} 
+        className="game-canvas"
+        onClick={handleCanvasClick}
+        onMouseMove={handleCanvasMouseMove}
+        aria-label="Game world canvas"
+        style={{ cursor: buildingMode ? 'crosshair' : 'default' }}
+      />
+      <CameraControls
+        camera={camera}
+        onCameraChange={setCamera}
+        canvasRef={canvasRef}
+      />
+    </>
   )
 }
 

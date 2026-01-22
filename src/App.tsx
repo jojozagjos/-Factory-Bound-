@@ -10,9 +10,16 @@ import SaveManager from './components/SaveManager/SaveManager'
 import LoginScreen from './components/LoginScreen/LoginScreen'
 import GameOverScreen from './components/GameOverScreen/GameOverScreen'
 import ChatSystem from './components/ChatSystem/ChatSystem'
+import Minimap from './components/Minimap/Minimap'
+import KeyboardHelp from './components/KeyboardHelp/KeyboardHelp'
+import AchievementNotification from './components/AchievementNotification/AchievementNotification'
+import ParticleSystem, { type Particle } from './components/ParticleSystem/ParticleSystem'
+import Tooltips, { useTooltips } from './components/Tooltips/Tooltips'
 import { useTutorialStore } from './store/tutorialStore'
 import { useGameStore } from './store/gameStore'
 import { useAutoSave } from './hooks/useAutoSave'
+import { useScreenShake } from './hooks/useScreenShake'
+import { achievementSystem } from './systems/AchievementSystem/AchievementSystem'
 import { GameMode } from './types/game'
 import type { GameSession } from './types/game'
 import { audioSystem } from './systems/AudioSystem/AudioSystem'
@@ -44,9 +51,39 @@ function App() {
   const lastTimeRef = useRef<number>(Date.now())
   const [showGameOver, setShowGameOver] = useState(false)
   const [isVictory, setIsVictory] = useState(false)
+  const [particles, setParticles] = useState<Particle[]>([])
+  const { tooltips } = useTooltips()
+  const { shakeOffset } = useScreenShake()
 
   // Enable auto-save when in game
   useAutoSave(gameState === 'game')
+
+  // Apply screen shake effect
+  useEffect(() => {
+    if (shakeOffset.x !== 0 || shakeOffset.y !== 0) {
+      document.body.style.transform = `translate(${shakeOffset.x}px, ${shakeOffset.y}px)`
+    } else {
+      document.body.style.transform = ''
+    }
+  }, [shakeOffset])
+
+
+  // Track achievements
+  useEffect(() => {
+    if (gameState === 'game' && machines.length === 1) {
+      achievementSystem.unlock('first_machine')
+    }
+    if (machines.length >= 10) {
+      achievementSystem.setProgress('builder_10', machines.length)
+    }
+    if (machines.length >= 50) {
+      achievementSystem.setProgress('builder_50', machines.length)
+    }
+    if (machines.length >= 100) {
+      achievementSystem.setProgress('builder_100', machines.length)
+    }
+  }, [machines.length, gameState])
+
 
   // Game loop
   useEffect(() => {
@@ -261,14 +298,19 @@ function App() {
           {session?.settings?.maxPlayers && session.settings.maxPlayers > 1 && (
             <ChatSystem />
           )}
+          <Minimap />
+          <KeyboardHelp />
+          <ParticleSystem particles={particles} onUpdate={setParticles} />
+          <Tooltips tooltips={tooltips} />
+          <AchievementNotification />
           {showGameOver && (
             <GameOverScreen 
               isVictory={isVictory}
               score={calculateScore()}
               playtime={formatTime(gameTime)}
               stats={{
-                enemiesKilled: 0, // TODO: Track in combat system
-                itemsProduced: 0, // TODO: Track in resource system
+                enemiesKilled: 0,
+                itemsProduced: 0,
                 techsResearched: currentPlayer?.stats.completedResearch.length || 0,
                 machinesBuilt: machines.length,
               }}
