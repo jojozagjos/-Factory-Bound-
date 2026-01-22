@@ -66,6 +66,8 @@ const BuildMenu = ({ onClose, onSelectBuilding }: BuildMenuProps) => {
   const currentCategory = categories.find(c => c.name === selectedCategory)
 
   const handleSelectBuilding = (type: MachineType) => {
+    // Emit custom event to set building mode on canvas
+    window.dispatchEvent(new CustomEvent('setBuildingMode', { detail: type }))
     onSelectBuilding(type)
     onClose()
   }

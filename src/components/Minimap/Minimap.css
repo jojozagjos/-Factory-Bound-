@@ -1,0 +1,39 @@
+.minimap-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: rgba(26, 26, 26, 0.9);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  padding: 10px;
+  backdrop-filter: blur(10px);
+  z-index: 100;
+}
+
+.minimap-canvas {
+  display: block;
+  border-radius: 4px;
+  image-rendering: pixelated;
+}
+
+.minimap-legend {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}

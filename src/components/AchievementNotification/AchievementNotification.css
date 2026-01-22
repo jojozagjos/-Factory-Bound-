@@ -1,0 +1,96 @@
+.achievement-notification {
+  position: fixed;
+  top: 80px;
+  right: 20px;
+  background: linear-gradient(135deg, rgba(26, 26, 26, 0.95), rgba(38, 38, 38, 0.95));
+  border-radius: 12px;
+  padding: 16px;
+  min-width: 320px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  animation: slideInRight 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  z-index: 10000;
+  border: 2px solid;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.achievement-common {
+  border-color: rgba(156, 163, 175, 0.5);
+}
+
+.achievement-rare {
+  border-color: rgba(59, 130, 246, 0.7);
+  box-shadow: 0 10px 40px rgba(59, 130, 246, 0.3);
+}
+
+.achievement-epic {
+  border-color: rgba(168, 85, 247, 0.7);
+  box-shadow: 0 10px 40px rgba(168, 85, 247, 0.3);
+}
+
+.achievement-legendary {
+  border-color: rgba(251, 191, 36, 0.7);
+  box-shadow: 0 10px 40px rgba(251, 191, 36, 0.3);
+  animation: slideInRight 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55), glow 2s ease-in-out infinite;
+}
+
+.achievement-icon {
+  font-size: 48px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 10px currentColor);
+}
+
+.achievement-details {
+  flex: 1;
+}
+
+.achievement-title {
+  font-size: 12px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+}
+
+.achievement-name {
+  font-size: 18px;
+  font-weight: bold;
+  color: white;
+  margin-bottom: 4px;
+}
+
+.achievement-description {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.achievement-rarity {
+  font-size: 10px;
+  font-weight: bold;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.8);
+  align-self: flex-start;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(400px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 5px rgba(251, 191, 36, 0.5));
+  }
+  50% {
+    filter: drop-shadow(0 0 20px rgba(251, 191, 36, 0.8));
+  }
+}

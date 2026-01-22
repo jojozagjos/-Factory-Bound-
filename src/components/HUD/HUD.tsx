@@ -17,12 +17,32 @@ const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree
   const togglePause = useGameStore(state => state.togglePause)
   const showInventory = useGameStore(state => state.showInventory)
   const toggleInventory = useGameStore(state => state.toggleInventory)
+  const gameTime = useGameStore(state => state.gameTime)
+  const gameModeManager = useGameStore(state => state.gameModeManager)
+  
+  // Format game time
+  const formatTime = (ms: number) => {
+    const totalSeconds = Math.floor(ms / 1000)
+    const minutes = Math.floor(totalSeconds / 60)
+    const seconds = totalSeconds % 60
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`
+  }
+
+  // Get resource counts from inventory
+  const getResourceCount = (resourceName: string) => {
+    const item = currentPlayer?.inventory.find(i => i.name === resourceName)
+    return item?.quantity || 0
+  }
 
   return (
     <div className="hud">
       {/* Top Bar */}
       <div className="hud-top">
         <div className="player-stats">
+          <div className="stat">
+            <span className="stat-label">Time</span>
+            <span className="stat-value">{formatTime(gameTime)}</span>
+          </div>
           <div className="stat">
             <span className="stat-label">Level</span>
             <span className="stat-value">{currentPlayer?.stats.level ?? 1}</span>
@@ -31,10 +51,12 @@ const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree
             <span className="stat-label">XP</span>
             <span className="stat-value">{currentPlayer?.stats.experience ?? 0}</span>
           </div>
-          <div className="stat">
-            <span className="stat-label">Prestige</span>
-            <span className="stat-value prestige">{currentPlayer?.stats.prestigeLevel ?? 0}</span>
-          </div>
+          {gameModeManager && (
+            <div className="stat">
+              <span className="stat-label">Progress</span>
+              <span className="stat-value">{Math.floor(gameModeManager.getVictoryProgress())}%</span>
+            </div>
+          )}
         </div>
 
         <div className="game-controls">
@@ -141,18 +163,18 @@ const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree
         <div className="resource-display">
           <div className="resource">
             <span className="resource-icon">⚙</span>
-            <span className="resource-name">Iron</span>
-            <span className="resource-amount">0</span>
+            <span className="resource-name">Iron Plate</span>
+            <span className="resource-amount">{getResourceCount('iron_plate')}</span>
           </div>
           <div className="resource">
             <span className="resource-icon">🔩</span>
             <span className="resource-name">Copper</span>
-            <span className="resource-amount">0</span>
+            <span className="resource-amount">{getResourceCount('copper_plate')}</span>
           </div>
           <div className="resource">
             <span className="resource-icon">⚡</span>
-            <span className="resource-name">Power</span>
-            <span className="resource-amount">100 MW</span>
+            <span className="resource-name">Circuits</span>
+            <span className="resource-amount">{getResourceCount('electronic_circuit')}</span>
           </div>
         </div>
       </div>
