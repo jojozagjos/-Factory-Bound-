@@ -16,6 +16,18 @@ const GameCanvas = () => {
   const [buildingMode, setBuildingMode] = useState<MachineType | null>(null)
   const [ghostPosition, setGhostPosition] = useState<{ x: number; y: number } | null>(null)
   const [camera, setCamera] = useState<CameraState>({ x: 0, y: 0, zoom: 1 })
+  const [showGrid, setShowGrid] = useState(true)
+
+  // Listen for grid toggle
+  useEffect(() => {
+    const handleGridToggle = (e: Event) => {
+      const customEvent = e as CustomEvent<boolean>
+      setShowGrid(customEvent.detail)
+    }
+    
+    window.addEventListener('toggleGrid', handleGridToggle)
+    return () => window.removeEventListener('toggleGrid', handleGridToggle)
+  }, [])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -28,28 +40,16 @@ const GameCanvas = () => {
     canvas.width = window.innerWidth
     canvas.height = window.innerHeight
 
+    let animationFrameId: number
+
     // Simple render loop
     const render = () => {
-      // Clear canvas
+      // Clear canvas completely
+      ctx.save()
+      ctx.setTransform(1, 0, 0, 1, 0, 0)
       ctx.fillStyle = '#0a0a0a'
       ctx.fillRect(0, 0, canvas.width, canvas.height)
-
-      // Draw grid
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)'
-      ctx.lineWidth = 1
-      const gridSize = 50
-      for (let x = 0; x < canvas.width; x += gridSize) {
-        ctx.beginPath()
-        ctx.moveTo(x, 0)
-        ctx.lineTo(x, canvas.height)
-        ctx.stroke()
-      }
-      for (let y = 0; y < canvas.height; y += gridSize) {
-        ctx.beginPath()
-        ctx.moveTo(0, y)
-        ctx.lineTo(canvas.width, y)
-        ctx.stroke()
-      }
+      ctx.restore()
 
       // Apply camera transform
       ctx.save()
@@ -57,41 +57,115 @@ const GameCanvas = () => {
       ctx.scale(camera.zoom, camera.zoom)
       ctx.translate(-camera.x, -camera.y)
 
+      const gridSize = 50
+
+      // Calculate visible area for optimization
+      let visibleLeft = 0
+      let visibleRight = 0
+      let visibleTop = 0
+      let visibleBottom = 0
+
       // Draw world tiles (if map exists)
       if (worldMap) {
-        // Convert Map to array for iteration
-        const tilesArray = Array.from(worldMap.tiles.values())
-        tilesArray.forEach(tile => {
-          const screenX = tile.x * gridSize
-          const screenY = tile.y * gridSize
+        visibleLeft = Math.floor((camera.x - canvas.width / (2 * camera.zoom)) / gridSize) - 1
+        visibleRight = Math.ceil((camera.x + canvas.width / (2 * camera.zoom)) / gridSize) + 1
+        visibleTop = Math.floor((camera.y - canvas.height / (2 * camera.zoom)) / gridSize) - 1
+        visibleBottom = Math.ceil((camera.y + canvas.height / (2 * camera.zoom)) / gridSize) + 1
 
-          // Draw tile based on type
-          switch (tile.type) {
-            case 'water':
-              ctx.fillStyle = '#1e40af'
-              break
-            case 'grass':
-              ctx.fillStyle = '#16a34a'
-              break
-            case 'stone':
-              ctx.fillStyle = '#737373'
-              break
-            case 'sand':
-              ctx.fillStyle = '#d97706'
-              break
-            default:
-              ctx.fillStyle = '#1a1a1a'
-          }
-          ctx.fillRect(screenX, screenY, gridSize - 2, gridSize - 2)
+        // Draw only visible tiles
+        for (let tileY = Math.max(0, visibleTop); tileY < Math.min(worldMap.height, visibleBottom); tileY++) {
+          for (let tileX = Math.max(0, visibleLeft); tileX < Math.min(worldMap.width, visibleRight); tileX++) {
+            const tile = worldMap.tiles.get(`${tileX},${tileY}`)
+            if (!tile) continue
 
-          // Draw resources
-          if (tile.resource) {
-            ctx.fillStyle = tile.resource.type === 'iron_ore' ? '#94a3b8' : '#ea580c'
-            ctx.beginPath()
-            ctx.arc(screenX + gridSize / 2, screenY + gridSize / 2, 8, 0, Math.PI * 2)
-            ctx.fill()
+            const screenX = tile.x * gridSize
+            const screenY = tile.y * gridSize
+
+            // Draw tile with better colors
+            switch (tile.type) {
+              case 'water':
+                ctx.fillStyle = '#1e3a8a'
+                ctx.fillRect(screenX, screenY, gridSize, gridSize)
+                // Add water texture
+                ctx.fillStyle = '#2563eb'
+                ctx.fillRect(screenX + 2, screenY + 2, gridSize - 4, gridSize - 4)
+                break
+              case 'grass':
+                ctx.fillStyle = '#15803d'
+                ctx.fillRect(screenX, screenY, gridSize, gridSize)
+                // Add grass texture
+                ctx.fillStyle = '#16a34a'
+                ctx.fillRect(screenX + 1, screenY + 1, gridSize - 2, gridSize - 2)
+                break
+              case 'stone':
+                ctx.fillStyle = '#52525b'
+                ctx.fillRect(screenX, screenY, gridSize, gridSize)
+                // Add stone texture
+                ctx.fillStyle = '#71717a'
+                ctx.fillRect(screenX + 2, screenY + 2, gridSize - 4, gridSize - 4)
+                break
+              case 'sand':
+                ctx.fillStyle = '#ca8a04'
+                ctx.fillRect(screenX, screenY, gridSize, gridSize)
+                // Add sand texture
+                ctx.fillStyle = '#eab308'
+                ctx.fillRect(screenX + 1, screenY + 1, gridSize - 2, gridSize - 2)
+                break
+              default:
+                ctx.fillStyle = '#1a1a1a'
+                ctx.fillRect(screenX, screenY, gridSize, gridSize)
+            }
+
+            // Draw resources with better visuals
+            if (tile.resource) {
+              const resourceSize = 12
+              ctx.save()
+              ctx.translate(screenX + gridSize / 2, screenY + gridSize / 2)
+              
+              if (tile.resource.type === 'iron_ore') {
+                // Iron ore - gray with darker outline
+                ctx.fillStyle = '#3f3f46'
+                ctx.beginPath()
+                ctx.arc(0, 0, resourceSize, 0, Math.PI * 2)
+                ctx.fill()
+                ctx.fillStyle = '#a1a1aa'
+                ctx.beginPath()
+                ctx.arc(0, 0, resourceSize - 3, 0, Math.PI * 2)
+                ctx.fill()
+              } else if (tile.resource.type === 'copper_ore') {
+                // Copper ore - orange/brown
+                ctx.fillStyle = '#c2410c'
+                ctx.beginPath()
+                ctx.arc(0, 0, resourceSize, 0, Math.PI * 2)
+                ctx.fill()
+                ctx.fillStyle = '#f97316'
+                ctx.beginPath()
+                ctx.arc(0, 0, resourceSize - 3, 0, Math.PI * 2)
+                ctx.fill()
+              }
+              
+              ctx.restore()
+            }
           }
-        })
+        }
+      }
+
+      // Draw grid overlay (optional, for Builderment-style look)
+      if (showGrid) {
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)'
+        ctx.lineWidth = 1 / camera.zoom
+        for (let x = Math.max(0, visibleLeft); x <= Math.min(worldMap?.width || 0, visibleRight); x++) {
+          ctx.beginPath()
+          ctx.moveTo(x * gridSize, Math.max(0, visibleTop) * gridSize)
+          ctx.lineTo(x * gridSize, Math.min(worldMap?.height || 0, visibleBottom) * gridSize)
+          ctx.stroke()
+        }
+        for (let y = Math.max(0, visibleTop); y <= Math.min(worldMap?.height || 0, visibleBottom); y++) {
+          ctx.beginPath()
+          ctx.moveTo(Math.max(0, visibleLeft) * gridSize, y * gridSize)
+          ctx.lineTo(Math.min(worldMap?.width || 0, visibleRight) * gridSize, y * gridSize)
+          ctx.stroke()
+        }
       }
 
       // Draw ghost building if in building mode
@@ -181,8 +255,8 @@ const GameCanvas = () => {
 
       // Draw enemies
       enemies.forEach(enemy => {
-        const x = enemy.position.x * gridSize + canvas.width / 2
-        const y = enemy.position.y * gridSize + canvas.height / 2
+        const x = enemy.position.x * gridSize
+        const y = enemy.position.y * gridSize
 
         ctx.save()
         ctx.translate(x, y)
@@ -205,8 +279,8 @@ const GameCanvas = () => {
 
       // Draw projectiles
       projectiles.forEach(projectile => {
-        const x = projectile.position.x * gridSize + canvas.width / 2
-        const y = projectile.position.y * gridSize + canvas.height / 2
+        const x = projectile.position.x * gridSize
+        const y = projectile.position.y * gridSize
 
         ctx.fillStyle = '#fbbf24'
         ctx.beginPath()
@@ -214,10 +288,13 @@ const GameCanvas = () => {
         ctx.fill()
       })
 
-      requestAnimationFrame(render)
+      // Restore canvas state
+      ctx.restore()
+
+      animationFrameId = requestAnimationFrame(render)
     }
 
-    render()
+    animationFrameId = requestAnimationFrame(render)
 
     // Handle window resize
     const handleResize = () => {
@@ -228,8 +305,11 @@ const GameCanvas = () => {
 
     return () => {
       window.removeEventListener('resize', handleResize)
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId)
+      }
     }
-  }, [machines, enemies, projectiles, worldMap, selectedMachine, buildingMode, ghostPosition])
+  }, [machines, enemies, projectiles, worldMap, selectedMachine, buildingMode, ghostPosition, camera, showGrid])
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current
@@ -315,6 +395,7 @@ const GameCanvas = () => {
         camera={camera}
         onCameraChange={setCamera}
         canvasRef={canvasRef}
+        worldBounds={worldMap ? { width: worldMap.width, height: worldMap.height } : undefined}
       />
     </>
   )

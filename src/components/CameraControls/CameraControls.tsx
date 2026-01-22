@@ -10,9 +10,30 @@ interface CameraControlsProps {
   camera: CameraState
   onCameraChange: (camera: CameraState) => void
   canvasRef: React.RefObject<HTMLCanvasElement>
+  worldBounds?: { width: number; height: number } // Optional world bounds for camera limiting
 }
 
-const CameraControls = ({ camera, onCameraChange, canvasRef }: CameraControlsProps) => {
+const CameraControls = ({ camera, onCameraChange, canvasRef, worldBounds }: CameraControlsProps) => {
+  // Helper function to clamp camera position within world bounds
+  const clampCamera = (newCamera: CameraState): CameraState => {
+    if (!worldBounds) return newCamera
+    
+    const gridSize = 50
+    const maxX = (worldBounds.width * gridSize) / 2
+    const maxY = (worldBounds.height * gridSize) / 2
+    const minX = -(worldBounds.width * gridSize) / 2
+    const minY = -(worldBounds.height * gridSize) / 2
+    
+    // Add padding based on zoom to prevent seeing edges
+    const padding = 200 / newCamera.zoom
+    
+    return {
+      ...newCamera,
+      x: Math.max(minX + padding, Math.min(maxX - padding, newCamera.x)),
+      y: Math.max(minY + padding, Math.min(maxY - padding, newCamera.y)),
+    }
+  }
+
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -21,8 +42,8 @@ const CameraControls = ({ camera, onCameraChange, canvasRef }: CameraControlsPro
     let lastMousePos = { x: 0, y: 0 }
 
     const handleMouseDown = (e: MouseEvent) => {
-      if (e.button === 1 || (e.button === 0 && e.shiftKey)) {
-        // Middle mouse or shift+left click for panning
+      // Right click or middle click for panning
+      if (e.button === 2 || e.button === 1) {
         isPanning = true
         lastMousePos = { x: e.clientX, y: e.clientY }
         canvas.style.cursor = 'grabbing'
@@ -35,19 +56,23 @@ const CameraControls = ({ camera, onCameraChange, canvasRef }: CameraControlsPro
         const deltaX = e.clientX - lastMousePos.x
         const deltaY = e.clientY - lastMousePos.y
         
-        onCameraChange({
+        const newCamera = clampCamera({
           ...camera,
-          x: camera.x + deltaX / camera.zoom,
-          y: camera.y + deltaY / camera.zoom,
+          x: camera.x - deltaX / camera.zoom,
+          y: camera.y - deltaY / camera.zoom,
         })
+        
+        onCameraChange(newCamera)
 
         lastMousePos = { x: e.clientX, y: e.clientY }
       }
     }
 
-    const handleMouseUp = () => {
-      isPanning = false
-      canvas.style.cursor = 'default'
+    const handleMouseUp = (e: MouseEvent) => {
+      if (e.button === 2 || e.button === 1) {
+        isPanning = false
+        canvas.style.cursor = 'default'
+      }
     }
 
     const handleWheel = (e: WheelEvent) => {
@@ -68,43 +93,25 @@ const CameraControls = ({ camera, onCameraChange, canvasRef }: CameraControlsPro
       const newX = worldX - (mouseX - canvas.width / 2) / newZoom
       const newY = worldY - (mouseY - canvas.height / 2) / newZoom
 
-      onCameraChange({
+      const newCamera = clampCamera({
         x: newX,
         y: newY,
         zoom: newZoom,
       })
+      
+      onCameraChange(newCamera)
     }
 
-    // Keyboard controls
+    // Prevent context menu on right click
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault()
+    }
+
+    // Keyboard controls for zoom only
     const handleKeyDown = (e: KeyboardEvent) => {
-      const panSpeed = 20
       const newCamera = { ...camera }
 
       switch (e.key) {
-        case 'ArrowLeft':
-        case 'a':
-        case 'A':
-          newCamera.x -= panSpeed / camera.zoom
-          onCameraChange(newCamera)
-          break
-        case 'ArrowRight':
-        case 'd':
-        case 'D':
-          newCamera.x += panSpeed / camera.zoom
-          onCameraChange(newCamera)
-          break
-        case 'ArrowUp':
-        case 'w':
-        case 'W':
-          newCamera.y -= panSpeed / camera.zoom
-          onCameraChange(newCamera)
-          break
-        case 'ArrowDown':
-        case 's':
-        case 'S':
-          newCamera.y += panSpeed / camera.zoom
-          onCameraChange(newCamera)
-          break
         case '=':
         case '+':
           newCamera.zoom = Math.min(4, camera.zoom * 1.1)
@@ -125,14 +132,18 @@ const CameraControls = ({ camera, onCameraChange, canvasRef }: CameraControlsPro
     canvas.addEventListener('mousedown', handleMouseDown)
     canvas.addEventListener('mousemove', handleMouseMove)
     canvas.addEventListener('mouseup', handleMouseUp)
+    canvas.addEventListener('mouseleave', handleMouseUp)
     canvas.addEventListener('wheel', handleWheel, { passive: false })
+    canvas.addEventListener('contextmenu', handleContextMenu)
     document.addEventListener('keydown', handleKeyDown)
 
     return () => {
       canvas.removeEventListener('mousedown', handleMouseDown)
       canvas.removeEventListener('mousemove', handleMouseMove)
       canvas.removeEventListener('mouseup', handleMouseUp)
+      canvas.removeEventListener('mouseleave', handleMouseUp)
       canvas.removeEventListener('wheel', handleWheel)
+      canvas.removeEventListener('contextmenu', handleContextMenu)
       document.removeEventListener('keydown', handleKeyDown)
     }
   }, [camera, onCameraChange, canvasRef])

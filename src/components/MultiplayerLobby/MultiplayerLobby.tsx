@@ -14,10 +14,14 @@ const MultiplayerLobby = ({ mode, isPvP, onStartGame, onCancel }: MultiplayerLob
   const [networkManager] = useState(() => new NetworkManager())
   const [isConnecting, setIsConnecting] = useState(false)
   const [isConnected, setIsConnected] = useState(false)
+  const [offlineMode, setOfflineMode] = useState(false)
   const [currentSession, setCurrentSession] = useState<GameSession | null>(null)
   const [availableSessions, setAvailableSessions] = useState<GameSession[]>([])
   const [error, setError] = useState<string>('')
   const [lobbyCode, setLobbyCode] = useState('')
+  const [serverName, setServerName] = useState('')
+  const [isPrivate, setIsPrivate] = useState(false)
+  const [searchFilter, setSearchFilter] = useState('')
   const [settings, setSettings] = useState<GameSettings>({
     maxPlayers: isPvP ? 4 : 8,
     difficulty: 'normal',
@@ -47,7 +51,9 @@ const MultiplayerLobby = ({ mode, isPvP, onStartGame, onCancel }: MultiplayerLob
         setAvailableSessions(sessions)
       }
     } catch (err) {
-      setError('Failed to connect to game server. Please try again.')
+      // Fallback to offline mode
+      setOfflineMode(true)
+      setError('Server unavailable. Operating in offline mode - multiplayer features disabled.')
       console.error('Connection error:', err)
     } finally {
       setIsConnecting(false)
@@ -277,6 +283,30 @@ const MultiplayerLobby = ({ mode, isPvP, onStartGame, onCancel }: MultiplayerLob
 
           <div className="lobby-content">
             <div className="lobby-section">
+              <h3>Server Settings</h3>
+              <div className="settings-grid">
+                <label>
+                  <span>Server Name:</span>
+                  <input 
+                    type="text" 
+                    placeholder="My Awesome Server"
+                    value={serverName}
+                    onChange={(e) => setServerName(e.target.value)}
+                    maxLength={50}
+                  />
+                </label>
+                <label>
+                  <input 
+                    type="checkbox" 
+                    checked={isPrivate}
+                    onChange={(e) => setIsPrivate(e.target.checked)}
+                  />
+                  <span>Private Server (requires code to join)</span>
+                </label>
+              </div>
+            </div>
+
+            <div className="lobby-section">
               <h3>Game Settings</h3>
               <div className="settings-grid">
                 <label>
@@ -319,25 +349,28 @@ const MultiplayerLobby = ({ mode, isPvP, onStartGame, onCancel }: MultiplayerLob
                   />
                   <span>Friendly Fire</span>
                 </label>
-                {isPvP && (
-                  <label>
-                    <span>World Seed:</span>
-                    <input 
-                      type="number" 
-                      value={settings.worldSeed}
-                      onChange={(e) => setSettings({...settings, worldSeed: parseInt(e.target.value, 10)})}
-                    />
-                  </label>
-                )}
+                <label>
+                  <span>World Seed:</span>
+                  <input 
+                    type="number" 
+                    value={settings.worldSeed}
+                    onChange={(e) => setSettings({...settings, worldSeed: parseInt(e.target.value, 10)})}
+                  />
+                </label>
               </div>
             </div>
 
             {error && <div className="lobby-error-msg">{error}</div>}
+            {offlineMode && (
+              <div className="lobby-info-msg">
+                ℹ️ Server is offline. You can still create a local game, but multiplayer features won't be available.
+              </div>
+            )}
           </div>
 
           <div className="lobby-actions">
             <button className="lobby-button primary" onClick={handleCreateSession}>
-              Create Lobby
+              {offlineMode ? 'Create Local Game' : 'Create Server'}
             </button>
             <button className="lobby-button" onClick={onCancel}>
               Back
@@ -349,6 +382,13 @@ const MultiplayerLobby = ({ mode, isPvP, onStartGame, onCancel }: MultiplayerLob
   }
 
   if (mode === 'join') {
+    const filteredSessions = availableSessions.filter(session => {
+      if (!searchFilter) return true
+      const sessionName = session.id.toLowerCase()
+      const filter = searchFilter.toLowerCase()
+      return sessionName.includes(filter)
+    })
+
     return (
       <div className="multiplayer-lobby">
         <div className="lobby-container">
@@ -376,24 +416,49 @@ const MultiplayerLobby = ({ mode, isPvP, onStartGame, onCancel }: MultiplayerLob
             <div className="lobby-divider">OR</div>
 
             <div className="lobby-section">
-              <h3>Available Sessions</h3>
+              <h3>Server Browser</h3>
+              <div className="server-browser-controls">
+                <input 
+                  type="text" 
+                  placeholder="Search servers..."
+                  value={searchFilter}
+                  onChange={(e) => setSearchFilter(e.target.value)}
+                  className="search-input"
+                />
+                <button 
+                  className="lobby-button" 
+                  onClick={() => connectToServer()}
+                  title="Refresh server list"
+                >
+                  🔄 Refresh
+                </button>
+              </div>
               <div className="session-list">
-                {availableSessions.length === 0 ? (
-                  <p className="empty-sessions">No active sessions found</p>
+                {offlineMode ? (
+                  <div className="empty-sessions">
+                    <p>⚠️ Server is offline</p>
+                    <p>Multiplayer features are currently unavailable.</p>
+                  </div>
+                ) : filteredSessions.length === 0 ? (
+                  <p className="empty-sessions">
+                    {searchFilter ? 'No servers match your search' : 'No active servers found'}
+                  </p>
                 ) : (
-                  availableSessions.map((session) => (
+                  filteredSessions.map((session) => (
                     <div key={session.id} className="session-item">
                       <div className="session-info">
                         <span className="session-name">
-                          {session.mode === 'pvp' ? 'PvP Match' : 'Co-op Game'}
+                          {session.mode === 'pvp' ? '⚔️ PvP Match' : '🤝 Co-op Game'}
                         </span>
                         <span className="session-players">
-                          {session.players.length}/{session.settings.maxPlayers} players
+                          👥 {session.players.length}/{session.settings.maxPlayers}
                         </span>
-                        <span className="session-difficulty">{session.settings.difficulty}</span>
+                        <span className="session-difficulty">
+                          ⭐ {session.settings.difficulty}
+                        </span>
                       </div>
                       <button 
-                        className="lobby-button small" 
+                        className="lobby-button primary small"
                         onClick={() => handleJoinSession(session.id)}
                       >
                         Join

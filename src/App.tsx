@@ -8,6 +8,7 @@ import BuildMenu from './components/BuildMenu/BuildMenu'
 import TechTree from './components/TechTree/TechTree'
 import SaveManager from './components/SaveManager/SaveManager'
 import LoginScreen from './components/LoginScreen/LoginScreen'
+import IntroScreen from './components/IntroScreen/IntroScreen'
 import GameOverScreen from './components/GameOverScreen/GameOverScreen'
 import ChatSystem from './components/ChatSystem/ChatSystem'
 import Minimap from './components/Minimap/Minimap'
@@ -25,10 +26,10 @@ import type { GameSession } from './types/game'
 import { audioSystem } from './systems/AudioSystem/AudioSystem'
 import './App.css'
 
-type GameState = 'login' | 'menu' | 'game' | 'editor'
+type GameState = 'intro' | 'login' | 'menu' | 'game' | 'editor'
 
 function App() {
-  const [gameState, setGameState] = useState<GameState>('login')
+  const [gameState, setGameState] = useState<GameState>('intro')
   const [showNodeEditor, setShowNodeEditor] = useState(false)
   const [showBuildMenu, setShowBuildMenu] = useState(false)
   const [showTechTree, setShowTechTree] = useState(false)
@@ -57,6 +58,16 @@ function App() {
 
   // Enable auto-save when in game
   useAutoSave(gameState === 'game')
+
+  // Listen for tutorial completion
+  useEffect(() => {
+    const handleTutorialComplete = () => {
+      handleReturnToMenu()
+    }
+    
+    window.addEventListener('tutorialComplete', handleTutorialComplete)
+    return () => window.removeEventListener('tutorialComplete', handleTutorialComplete)
+  }, [])
 
   // Apply screen shake effect
   useEffect(() => {
@@ -213,6 +224,11 @@ function App() {
     audioSystem.playMusic('menu_theme', true)
   }
 
+  const handleLogout = () => {
+    stopGame()
+    setGameState('login')
+  }
+
   const handleRetry = () => {
     // Get current game mode
     const currentMode = useGameStore.getState().currentGameMode
@@ -253,6 +269,9 @@ function App() {
 
   return (
     <div className="app">
+      {gameState === 'intro' && (
+        <IntroScreen onComplete={() => setGameState('login')} />
+      )}
       {gameState === 'login' && (
         <LoginScreen onLogin={handleLogin} />
       )}
@@ -261,6 +280,7 @@ function App() {
           onStartGame={handleStartGame}
           onStartTutorial={handleStartTutorial}
           onStartMultiplayer={handleStartMultiplayer}
+          onLogout={handleLogout}
         />
       )}
       {gameState === 'game' && (

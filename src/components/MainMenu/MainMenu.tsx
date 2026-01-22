@@ -8,9 +8,10 @@ interface MainMenuProps {
   onStartGame: (gameMode: GameMode) => void
   onStartTutorial: () => void
   onStartMultiplayer?: (session: GameSession) => void
+  onLogout?: () => void
 }
 
-const MainMenu = ({ onStartGame, onStartTutorial, onStartMultiplayer }: MainMenuProps) => {
+const MainMenu = ({ onStartGame, onStartTutorial, onStartMultiplayer, onLogout }: MainMenuProps) => {
   const [showSinglePlayer, setShowSinglePlayer] = useState(false)
   const [showMultiplayer, setShowMultiplayer] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
@@ -75,36 +76,45 @@ const MainMenu = ({ onStartGame, onStartTutorial, onStartMultiplayer }: MainMenu
               onClick={() => setShowSinglePlayer(true)}
               aria-label="Start Single Player"
             >
-              Single Player
+              🎮 Single Player
             </button>
             <button 
               className="menu-button primary"
               onClick={() => setShowMultiplayer(true)}
               aria-label="Start Multiplayer"
             >
-              Multiplayer
+              🌐 Multiplayer
             </button>
             <button 
               className="menu-button primary"
               onClick={onStartTutorial}
               aria-label="Start Tutorial"
             >
-              Tutorial
+              📚 Tutorial
             </button>
             <button 
               className="menu-button"
               onClick={() => setShowSettings(true)}
               aria-label="Open Settings"
             >
-              Settings
+              ⚙️ Settings
             </button>
             <button 
               className="menu-button" 
               onClick={() => setShowCredits(true)}
               aria-label="View Credits"
             >
-              Credits
+              ℹ️ Credits
             </button>
+            {onLogout && (
+              <button 
+                className="menu-button logout-btn" 
+                onClick={onLogout}
+                aria-label="Logout"
+              >
+                🚪 Logout
+              </button>
+            )}
           </div>
         )}
 
