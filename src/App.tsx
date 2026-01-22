@@ -9,11 +9,13 @@ import TechTree from './components/TechTree/TechTree'
 import SaveManager from './components/SaveManager/SaveManager'
 import LoginScreen from './components/LoginScreen/LoginScreen'
 import GameOverScreen from './components/GameOverScreen/GameOverScreen'
+import ChatSystem from './components/ChatSystem/ChatSystem'
 import { useTutorialStore } from './store/tutorialStore'
 import { useGameStore } from './store/gameStore'
 import { useAutoSave } from './hooks/useAutoSave'
 import { GameMode } from './types/game'
 import type { GameSession } from './types/game'
+import { audioSystem } from './systems/AudioSystem/AudioSystem'
 import './App.css'
 
 type GameState = 'login' | 'menu' | 'game' | 'editor'
@@ -37,6 +39,7 @@ function App() {
   const currentPlayer = useGameStore(state => state.currentPlayer)
   const machines = useGameStore(state => state.machines)
   const stopGame = useGameStore(state => state.stopGame)
+  const session = useGameStore(state => state.session)
   const animationFrameRef = useRef<number>()
   const lastTimeRef = useRef<number>(Date.now())
   const [showGameOver, setShowGameOver] = useState(false)
@@ -167,6 +170,10 @@ function App() {
     stopGame()
     setGameState('menu')
     setShowGameOver(false)
+    
+    // Return to menu music
+    audioSystem.stopMusic(true)
+    audioSystem.playMusic('menu_theme', true)
   }
 
   const handleRetry = () => {
@@ -251,6 +258,9 @@ function App() {
             />
           )}
           <Tutorial />
+          {session && session.settings.maxPlayers > 1 && (
+            <ChatSystem />
+          )}
           {showGameOver && (
             <GameOverScreen 
               isVictory={isVictory}
