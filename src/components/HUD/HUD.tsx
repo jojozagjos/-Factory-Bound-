@@ -4,9 +4,11 @@ import './HUD.css'
 interface HUDProps {
   onOpenNodeEditor: () => void
   onReturnToMenu: () => void
+  onOpenBuildMenu: () => void
+  onOpenTechTree: () => void
 }
 
-const HUD = ({ onOpenNodeEditor, onReturnToMenu }: HUDProps) => {
+const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree }: HUDProps) => {
   const currentPlayer = useGameStore(state => state.currentPlayer)
   const selectedMachine = useGameStore(state => state.selectedMachine)
   const isPaused = useGameStore(state => state.isPaused)
@@ -67,10 +69,18 @@ const HUD = ({ onOpenNodeEditor, onReturnToMenu }: HUDProps) => {
         >
           🔌 Node Editor
         </button>
-        <button className="quick-btn" aria-label="Open tech tree">
+        <button 
+          className="quick-btn" 
+          onClick={onOpenTechTree}
+          aria-label="Open tech tree"
+        >
           🔬 Tech Tree
         </button>
-        <button className="quick-btn" aria-label="Open build menu">
+        <button 
+          className="quick-btn" 
+          onClick={onOpenBuildMenu}
+          aria-label="Open build menu"
+        >
           🏭 Build
         </button>
       </div>
