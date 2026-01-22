@@ -41,16 +41,27 @@ const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree
       if (e.key === 'Escape') {
         e.preventDefault()
         if (showPauseMenu) {
-          handleResume()
+          if (isPaused) {
+            togglePause()
+          }
+          setShowPauseMenu(false)
+          setShowSettings(false)
         } else {
-          handlePauseToggle()
+          if (!isPaused) {
+            togglePause()
+            setShowPauseMenu(true)
+          } else {
+            togglePause()
+            setShowPauseMenu(false)
+            setShowSettings(false)
+          }
         }
       }
     }
     
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isMultiplayer, showPauseMenu])
+  }, [isMultiplayer, showPauseMenu, isPaused, togglePause])
   
   // Format game time
   const formatTime = (ms: number) => {
