@@ -96,8 +96,8 @@ const GameCanvas = () => {
 
       // Draw ghost building if in building mode
       if (buildingMode && ghostPosition) {
-        const x = ghostPosition.x * gridSize + canvas.width / 2
-        const y = ghostPosition.y * gridSize + canvas.height / 2
+        const x = ghostPosition.x * gridSize
+        const y = ghostPosition.y * gridSize
         
         ctx.save()
         ctx.translate(x + gridSize / 2, y + gridSize / 2)
@@ -110,8 +110,8 @@ const GameCanvas = () => {
 
       // Draw machines
       machines.forEach(machine => {
-        const x = machine.position.x * gridSize + canvas.width / 2
-        const y = machine.position.y * gridSize + canvas.height / 2
+        const x = machine.position.x * gridSize
+        const y = machine.position.y * gridSize
 
         // Draw machine based on type
         ctx.save()
