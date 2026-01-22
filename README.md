@@ -5,11 +5,15 @@ A professional Factorio-style automation game with visual/node-based programming
 ## Features
 
 ### Core Gameplay
+- **Interactive Tutorial System**: Comprehensive 16-step tutorial covering all game mechanics
 - **Visual/Node-Based Programming**: Program machines using an intuitive node-based editor
 - **Automation Systems**: Build complex production chains with miners, assemblers, belts, and inserters
+- **Building System**: Place and manage 8 different machine types with collision detection
+- **Recipe System**: 15+ crafting recipes for items and components
 - **Logistics Network**: Transport items efficiently across your factory
 - **Power Management**: Manage power generation and distribution
 - **Combat Systems**: Defend against enemies with turrets and automated defenses
+- **Inventory Management**: Stack-based inventory with 100-item stack limits
 
 ### World & Progression
 - **Procedural Map Generation**: Each game features unique, seeded worlds
@@ -96,7 +100,30 @@ npm run lint
    - Prestige mechanics
    - Meta progression bonuses
 
-4. **Network Manager** (`/src/engine/networking/`)
+4. **Resource System** (`/src/systems/`)
+   - 15+ crafting recipes
+   - Mining mechanics
+   - Inventory management with stacking
+   - Recipe validation and crafting
+
+5. **Building System** (`/src/systems/`)
+   - Placement validation and collision detection
+   - Resource cost management
+   - Building preview (ghost mode)
+   - 8 machine types: miner, assembler, smelter, belt, inserter, power_plant, turret, storage
+
+6. **Combat System** (`/src/systems/`)
+   - Enemy types and spawning
+   - Turret targeting and shooting
+   - Projectile physics
+   - Wave management
+
+7. **Game Mode Manager** (`/src/systems/`)
+   - Victory/defeat conditions
+   - Score calculation
+   - Multiple game modes (Survival, Production, Exploration, Custom)
+
+8. **Network Manager** (`/src/engine/networking/`)
    - Multiplayer session management
    - State synchronization
    - Ranked matchmaking
@@ -107,7 +134,30 @@ npm run lint
 - **MainMenu**: Game entry point with settings and modes
 - **GameCanvas**: Main game world rendering
 - **HUD**: In-game interface with stats and controls
+- **Tutorial**: Interactive 16-step tutorial system
 - **NodeEditor**: Visual programming interface
+- **BuildMenu**: Building selection with categories (Logistics, Production, Power, Defense)
+- **TechTree**: Technology research interface across 5 paradigms
+- **GameOverScreen**: Victory/defeat screen with statistics
+
+### State Management
+
+- **gameStore**: Global game state with Zustand
+- **tutorialStore**: Tutorial progress and state
+- Immutable updates with Immer middleware
+
+## Testing
+
+The project includes comprehensive test coverage:
+- **47 tests** covering core systems
+- Unit tests for ResourceSystem, BuildingSystem, SimulationEngine
+- Progression and map generation tests
+- 100% test pass rate
+
+Run tests with:
+```bash
+npm test
+```
 
 ## Game Modes
 

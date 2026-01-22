@@ -36,8 +36,8 @@ describe('BuildingSystem', () => {
 
     it('should have costs for all machine types', () => {
       const machineTypes: MachineType[] = [
-        'miner', 'assembler', 'smelter', 'belt', 
-        'inserter', 'power_plant', 'turret', 'storage'
+        MachineType.MINER, MachineType.ASSEMBLER, MachineType.SMELTER, MachineType.BELT,
+        MachineType.INSERTER, MachineType.POWER_PLANT, MachineType.TURRET, MachineType.STORAGE
       ]
 
       machineTypes.forEach(type => {
