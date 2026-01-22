@@ -8,6 +8,7 @@ import BuildMenu from './components/BuildMenu/BuildMenu'
 import TechTree from './components/TechTree/TechTree'
 import SaveManager from './components/SaveManager/SaveManager'
 import LoginScreen from './components/LoginScreen/LoginScreen'
+import GameOverScreen from './components/GameOverScreen/GameOverScreen'
 import { useTutorialStore } from './store/tutorialStore'
 import { useGameStore } from './store/gameStore'
 import { useAutoSave } from './hooks/useAutoSave'
@@ -31,8 +32,15 @@ function App() {
   const updateGame = useGameStore(state => state.updateGame)
   const isRunning = useGameStore(state => state.isRunning)
   const isPaused = useGameStore(state => state.isPaused)
+  const gameModeManager = useGameStore(state => state.gameModeManager)
+  const gameTime = useGameStore(state => state.gameTime)
+  const currentPlayer = useGameStore(state => state.currentPlayer)
+  const machines = useGameStore(state => state.machines)
+  const stopGame = useGameStore(state => state.stopGame)
   const animationFrameRef = useRef<number>()
   const lastTimeRef = useRef<number>(Date.now())
+  const [showGameOver, setShowGameOver] = useState(false)
+  const [isVictory, setIsVictory] = useState(false)
 
   // Enable auto-save when in game
   useAutoSave(gameState === 'game')
@@ -51,6 +59,30 @@ function App() {
       // Update game (max 50ms per frame to prevent spiral of death)
       updateGame(Math.min(deltaTime, 50))
 
+      // Check for game over
+      if (gameModeManager) {
+        const result = gameModeManager.update(deltaTime)
+        if (result.isVictory) {
+          setIsVictory(true)
+          setShowGameOver(true)
+          stopGame()
+          return
+        } else if (result.isDefeat) {
+          setIsVictory(false)
+          setShowGameOver(true)
+          stopGame()
+          return
+        }
+      }
+
+      // Check player death
+      if (currentPlayer && currentPlayer.health <= 0) {
+        setIsVictory(false)
+        setShowGameOver(true)
+        stopGame()
+        return
+      }
+
       animationFrameRef.current = requestAnimationFrame(gameLoop)
     }
 
@@ -61,7 +93,7 @@ function App() {
         cancelAnimationFrame(animationFrameRef.current)
       }
     }
-  }, [gameState, isRunning, isPaused, updateGame])
+  }, [gameState, isRunning, isPaused, updateGame, gameModeManager, currentPlayer, stopGame])
 
   const handleLogin = (username: string) => {
     // Set the player username
@@ -131,6 +163,46 @@ function App() {
     }
   }
 
+  const handleReturnToMenu = () => {
+    stopGame()
+    setGameState('menu')
+    setShowGameOver(false)
+  }
+
+  const handleRetry = () => {
+    // Get current game mode
+    const currentMode = useGameStore.getState().currentGameMode
+    
+    // Restart with same mode
+    if (currentMode) {
+      handleStartGame(currentMode)
+    }
+    setShowGameOver(false)
+  }
+
+  const formatTime = (ms: number) => {
+    const totalSeconds = Math.floor(ms / 1000)
+    const hours = Math.floor(totalSeconds / 3600)
+    const minutes = Math.floor((totalSeconds % 3600) / 60)
+    const seconds = totalSeconds % 60
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes}m ${seconds}s`
+    }
+    return `${minutes}m ${seconds}s`
+  }
+
+  const calculateScore = () => {
+    if (!gameModeManager) return 0
+    
+    return gameModeManager.calculateScore(
+      0, // enemies killed
+      0, // items produced
+      currentPlayer?.stats.completedResearch.length || 0,
+      machines.length
+    )
+  }
+
   return (
     <div className="app">
       {gameState === 'login' && (
@@ -148,7 +220,7 @@ function App() {
           <GameCanvas />
           <HUD 
             onOpenNodeEditor={handleOpenNodeEditor}
-            onReturnToMenu={() => setGameState('menu')}
+            onReturnToMenu={handleReturnToMenu}
             onOpenBuildMenu={() => setShowBuildMenu(true)}
             onOpenTechTree={() => setShowTechTree(true)}
             onSave={() => handleOpenSaveManager('save')}
@@ -161,7 +233,7 @@ function App() {
             <BuildMenu 
               onClose={() => setShowBuildMenu(false)}
               onSelectBuilding={() => {
-                // TODO: Enter building placement mode
+                // Building placement handled by canvas
               }}
             />
           )}
@@ -175,6 +247,21 @@ function App() {
             />
           )}
           <Tutorial />
+          {showGameOver && (
+            <GameOverScreen 
+              isVictory={isVictory}
+              score={calculateScore()}
+              playtime={formatTime(gameTime)}
+              stats={{
+                enemiesKilled: 0,
+                itemsProduced: 0,
+                techsResearched: currentPlayer?.stats.completedResearch.length || 0,
+                machinesBuilt: machines.length,
+              }}
+              onReturnToMenu={handleReturnToMenu}
+              onRestart={handleRetry}
+            />
+          )}
         </>
       )}
     </div>
