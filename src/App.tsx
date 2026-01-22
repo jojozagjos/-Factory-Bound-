@@ -258,7 +258,7 @@ function App() {
             />
           )}
           <Tutorial />
-          {session && session.settings.maxPlayers > 1 && (
+          {session?.settings?.maxPlayers && session.settings.maxPlayers > 1 && (
             <ChatSystem />
           )}
           {showGameOver && (

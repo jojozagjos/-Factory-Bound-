@@ -33,22 +33,31 @@ const ChatSystem = () => {
 
   // Listen for incoming messages from network
   useEffect(() => {
-    const handleIncomingMessage = (event: CustomEvent<ChatMessage>) => {
-      setMessages(prev => [...prev, event.detail])
+    const handleIncomingMessage = (event: Event) => {
+      const customEvent = event as CustomEvent<ChatMessage>
+      setMessages(prev => [...prev, customEvent.detail])
     }
 
-    window.addEventListener('chatMessage' as any, handleIncomingMessage as any)
+    window.addEventListener('chatMessage', handleIncomingMessage)
 
     return () => {
-      window.removeEventListener('chatMessage' as any, handleIncomingMessage as any)
+      window.removeEventListener('chatMessage', handleIncomingMessage)
     }
   }, [])
 
   const handleSendMessage = () => {
     if (!inputValue.trim() || !currentPlayer) return
 
+    // Use crypto.randomUUID if available, fallback to timestamp+random
+    const generateId = () => {
+      if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID()
+      }
+      return `msg_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
+    }
+
     const message: ChatMessage = {
-      id: `msg_${Date.now()}_${Math.random()}`,
+      id: generateId(),
       sender: currentPlayer.username,
       message: inputValue.trim(),
       timestamp: Date.now(),

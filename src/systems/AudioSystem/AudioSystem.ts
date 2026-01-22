@@ -210,7 +210,18 @@ class AudioSystem {
    * Calculate effective volume based on settings
    */
   private getEffectiveVolume(type: 'music' | 'sfx' | 'ambient'): number {
-    const typeVolume = this.settings[`${type}Volume`]
+    let typeVolume: number
+    switch (type) {
+      case 'music':
+        typeVolume = this.settings.musicVolume
+        break
+      case 'sfx':
+        typeVolume = this.settings.sfxVolume
+        break
+      case 'ambient':
+        typeVolume = this.settings.ambientVolume
+        break
+    }
     return this.settings.masterVolume * typeVolume
   }
 
