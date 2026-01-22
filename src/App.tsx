@@ -11,7 +11,6 @@ import LoginScreen from './components/LoginScreen/LoginScreen'
 import { useTutorialStore } from './store/tutorialStore'
 import { useGameStore } from './store/gameStore'
 import { useAutoSave } from './hooks/useAutoSave'
-import type { MachineType } from './types/game'
 import './App.css'
 
 type GameState = 'login' | 'menu' | 'game' | 'editor'
@@ -23,8 +22,6 @@ function App() {
   const [showTechTree, setShowTechTree] = useState(false)
   const [showSaveManager, setShowSaveManager] = useState(false)
   const [saveManagerMode, setSaveManagerMode] = useState<'save' | 'load'>('save')
-  const [_selectedBuilding, setSelectedBuilding] = useState<MachineType | null>(null)
-  const [_username, setUsername] = useState<string>('')
   const startTutorial = useTutorialStore(state => state.startTutorial)
   const startGame = useGameStore(state => state.startGame)
   const setPlayer = useGameStore(state => state.setPlayer)
@@ -34,7 +31,6 @@ function App() {
   useAutoSave(gameState === 'game')
 
   const handleLogin = (username: string) => {
-    setUsername(username)
     // Set the player username
     setPlayer({
       id: 'player_1',
@@ -69,11 +65,6 @@ function App() {
     if (withTutorial) {
       startTutorial()
     }
-  }
-
-  const handleSelectBuilding = (type: MachineType) => {
-    setSelectedBuilding(type)
-    // TODO: Enter building placement mode
   }
 
   const handleOpenSaveManager = (mode: 'save' | 'load') => {
@@ -116,7 +107,9 @@ function App() {
           {showBuildMenu && (
             <BuildMenu 
               onClose={() => setShowBuildMenu(false)}
-              onSelectBuilding={handleSelectBuilding}
+              onSelectBuilding={() => {
+                // TODO: Enter building placement mode
+              }}
             />
           )}
           {showTechTree && (
