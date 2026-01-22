@@ -195,9 +195,13 @@ function App() {
   const calculateScore = () => {
     if (!gameModeManager) return 0
     
+    // TODO: Implement proper tracking for these statistics
+    const enemiesKilled = 0 // Will be tracked in future update
+    const itemsProduced = 0 // Will be tracked in future update
+    
     return gameModeManager.calculateScore(
-      0, // enemies killed
-      0, // items produced
+      enemiesKilled,
+      itemsProduced,
       currentPlayer?.stats.completedResearch.length || 0,
       machines.length
     )
@@ -253,8 +257,8 @@ function App() {
               score={calculateScore()}
               playtime={formatTime(gameTime)}
               stats={{
-                enemiesKilled: 0,
-                itemsProduced: 0,
+                enemiesKilled: 0, // TODO: Track in combat system
+                itemsProduced: 0, // TODO: Track in resource system
                 techsResearched: currentPlayer?.stats.completedResearch.length || 0,
                 machinesBuilt: machines.length,
               }}

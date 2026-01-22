@@ -111,7 +111,7 @@ const GameCanvas = () => {
         ctx.rotate((machine.rotation * Math.PI) / 180)
 
         // Machine color by type
-        let color = '#4a9eff'
+        let color = '#4a9eff' // Default blue
         switch (machine.type) {
           case 'miner':
             color = '#fbbf24'
@@ -137,6 +137,8 @@ const GameCanvas = () => {
           case 'storage':
             color = '#fbbf24'
             break
+          default:
+            color = '#4a9eff'
         }
 
         ctx.fillStyle = color
@@ -279,13 +281,15 @@ const GameCanvas = () => {
     }
 
     // Listen for custom event from build menu
-    const listener = (e: CustomEvent) => {
-      handleBuildModeChange(e.detail)
+    // Using custom event for loose coupling between components
+    const listener = (e: Event) => {
+      const customEvent = e as CustomEvent<MachineType | null>
+      handleBuildModeChange(customEvent.detail)
     }
-    window.addEventListener('setBuildingMode' as any, listener as any)
+    window.addEventListener('setBuildingMode', listener)
 
     return () => {
-      window.removeEventListener('setBuildingMode' as any, listener as any)
+      window.removeEventListener('setBuildingMode', listener)
     }
   }, [])
 
