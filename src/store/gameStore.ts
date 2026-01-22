@@ -9,8 +9,17 @@ import type {
   SaveData,
   GameSettings,
   Item,
+  GameMode,
+  Enemy,
+  Projectile,
 } from '../types/game'
 import { ProceduralGenerator } from '../engine/procedural/MapGenerator'
+import { SimulationEngine } from '../engine/simulation/SimulationEngine'
+import { BuildingSystem } from '../systems/BuildingSystem'
+import { ResourceSystem } from '../systems/ResourceSystem'
+import { CombatSystem } from '../systems/CombatSystem'
+import { GameModeManager } from '../systems/GameModeManager'
+import { ProgressionSystem } from '../engine/progression/ProgressionSystem'
 
 // Helper function to unlock dependent technologies
 function unlockDependentTechs(techTree: TechNode[], unlockedTechId: string): void {
@@ -30,13 +39,29 @@ interface GameState {
   // Session
   session: GameSession | null
   currentPlayer: Player | null
+  currentGameMode: GameMode | null
   
   // World
   worldMap: WorldMap | null
   machines: Machine[]
+  enemies: Enemy[]
+  projectiles: Projectile[]
   
   // Progression
   techTree: TechNode[]
+  
+  // Game Systems
+  simulationEngine: SimulationEngine | null
+  buildingSystem: BuildingSystem
+  resourceSystem: ResourceSystem
+  combatSystem: CombatSystem | null
+  gameModeManager: GameModeManager | null
+  progressionSystem: ProgressionSystem | null
+  
+  // Game State
+  isRunning: boolean
+  gameTime: number
+  lastUpdateTime: number
   
   // UI State
   selectedMachine: Machine | null
@@ -56,10 +81,13 @@ interface GameState {
   unlockTech: (techId: string) => void
   saveGame: () => SaveData
   loadGame: (data: SaveData) => void
-  startGame: (settings: GameSettings) => void
+  startGame: (settings: GameSettings, gameMode?: GameMode) => void
+  stopGame: () => void
+  updateGame: (deltaTime: number) => void
   addToInventory: (item: Item) => boolean
   removeFromInventory: (itemName: string, quantity: number) => boolean
   gainExperience: (amount: number) => void
+  placeMachine: (machineType: string, position: { x: number; y: number }) => boolean
 }
 
 export const useGameStore = create<GameState>()(
@@ -67,12 +95,28 @@ export const useGameStore = create<GameState>()(
     // Initial state
     session: null,
     currentPlayer: null,
+    currentGameMode: null,
     worldMap: null,
     machines: [],
+    enemies: [],
+    projectiles: [],
     techTree: [],
     selectedMachine: null,
     isPaused: false,
     showInventory: false,
+    
+    // Game Systems
+    simulationEngine: null,
+    buildingSystem: new BuildingSystem(),
+    resourceSystem: new ResourceSystem(),
+    combatSystem: null,
+    gameModeManager: null,
+    progressionSystem: null,
+    
+    // Game State
+    isRunning: false,
+    gameTime: 0,
+    lastUpdateTime: Date.now(),
 
     // Actions
     setSession: (session) => set({ session }),
@@ -150,7 +194,7 @@ export const useGameStore = create<GameState>()(
       state.techTree = data.techTree
     }),
 
-    startGame: (settings) => set((state) => {
+    startGame: (settings, gameMode) => set((state) => {
       // Initialize new game session
       state.session = {
         id: `session_${Date.now()}`,
@@ -167,7 +211,14 @@ export const useGameStore = create<GameState>()(
           id: 'player_1',
           username: 'Player',
           position: { x: 50, y: 50 },
-          inventory: [],
+          inventory: [
+            // Starting resources
+            { id: 'iron_plate', name: 'iron_plate', quantity: 50 },
+            { id: 'copper_plate', name: 'copper_plate', quantity: 50 },
+            { id: 'iron_gear', name: 'iron_gear', quantity: 20 },
+            { id: 'electronic_circuit', name: 'electronic_circuit', quantity: 10 },
+            { id: 'stone', name: 'stone', quantity: 50 },
+          ],
           health: 100,
           maxHealth: 100,
           stats: {
@@ -183,7 +234,129 @@ export const useGameStore = create<GameState>()(
       // Generate world map
       const generator = new ProceduralGenerator(settings.worldSeed || Date.now())
       state.worldMap = generator.generateMap(100, 100, settings.modifiers || [])
+      
+      // Initialize game systems
+      state.currentGameMode = gameMode || ('custom' as GameMode)
+      state.simulationEngine = new SimulationEngine()
+      state.combatSystem = new CombatSystem()
+      state.gameModeManager = new GameModeManager(state.currentGameMode)
+      state.progressionSystem = new ProgressionSystem()
+      
+      // Initialize tech tree
+      state.techTree = state.progressionSystem.getTechTree()
+      
+      // Reset game state
+      state.machines = []
+      state.enemies = []
+      state.projectiles = []
+      state.isRunning = true
+      state.gameTime = 0
+      state.lastUpdateTime = Date.now()
+      state.isPaused = false
     }),
+
+    stopGame: () => set((state) => {
+      state.isRunning = false
+      state.simulationEngine = null
+      state.combatSystem = null
+      state.gameModeManager = null
+    }),
+
+    updateGame: (deltaTime) => {
+      const state = get()
+      if (!state.isRunning || state.isPaused || !state.simulationEngine) return
+      
+      set((draft) => {
+        draft.gameTime += deltaTime
+        
+        // Update simulation engine
+        if (draft.simulationEngine) {
+          const simResult = draft.simulationEngine.update(
+            deltaTime,
+            draft.machines,
+            draft.enemies,
+            draft.projectiles
+          )
+          
+          draft.machines = simResult.machines
+          draft.enemies = simResult.enemies
+          draft.projectiles = simResult.projectiles
+        }
+        
+        // Update game mode manager
+        if (draft.gameModeManager) {
+          const modeResult = draft.gameModeManager.update(deltaTime)
+          
+          if (modeResult.isVictory || modeResult.isDefeat) {
+            draft.isRunning = false
+          }
+        }
+        
+        // Check for player death
+        if (draft.currentPlayer && draft.currentPlayer.health <= 0) {
+          draft.isRunning = false
+        }
+      })
+    },
+
+    placeMachine: (machineType, position) => {
+      const state = get()
+      const { buildingSystem, worldMap, machines, currentPlayer } = state
+      
+      if (!worldMap || !currentPlayer) return false
+      
+      // Check if can place
+      const canPlace = buildingSystem.canPlaceAt(
+        position,
+        worldMap,
+        machines
+      )
+      
+      if (!canPlace) return false
+      
+      // Check building cost
+      const cost = buildingSystem.getBuildingCost(machineType as any)
+      if (!cost) return false
+      
+      // Check if player has resources
+      const hasResources = cost.costs.every(item => {
+        const playerItem = currentPlayer.inventory.find(i => i.name === item.name)
+        return playerItem && playerItem.quantity >= item.quantity
+      })
+      
+      if (!hasResources) return false
+      
+      // Deduct resources
+      let success = true
+      cost.costs.forEach(item => {
+        const removed = get().removeFromInventory(item.name, item.quantity)
+        if (!removed) success = false
+      })
+      
+      if (!success) return false
+      
+      // Create and place machine
+      const newMachine: Machine = {
+        id: `machine_${Date.now()}_${Math.random()}`,
+        type: machineType as any,
+        position,
+        rotation: 0,
+        inventory: [],
+        power: {
+          required: 0,
+          available: 0,
+          connected: false,
+        },
+        health: 100,
+        maxHealth: 100,
+      }
+      
+      set((state) => {
+        state.machines.push(newMachine)
+      })
+      
+      return true
+    },
 
     addToInventory: (item) => {
       const state = get()

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import MainMenu from './components/MainMenu/MainMenu'
 import GameCanvas from './components/GameCanvas/GameCanvas'
 import NodeEditor from './components/NodeEditor/NodeEditor'
@@ -27,9 +27,40 @@ function App() {
   const startGame = useGameStore(state => state.startGame)
   const setPlayer = useGameStore(state => state.setPlayer)
   const selectedMachine = useGameStore(state => state.selectedMachine)
+  const updateGame = useGameStore(state => state.updateGame)
+  const isRunning = useGameStore(state => state.isRunning)
+  const isPaused = useGameStore(state => state.isPaused)
+  const animationFrameRef = useRef<number>()
+  const lastTimeRef = useRef<number>(Date.now())
 
   // Enable auto-save when in game
   useAutoSave(gameState === 'game')
+
+  // Game loop
+  useEffect(() => {
+    if (gameState !== 'game' || !isRunning || isPaused) {
+      return
+    }
+
+    const gameLoop = () => {
+      const now = Date.now()
+      const deltaTime = now - lastTimeRef.current
+      lastTimeRef.current = now
+
+      // Update game (max 50ms per frame to prevent spiral of death)
+      updateGame(Math.min(deltaTime, 50))
+
+      animationFrameRef.current = requestAnimationFrame(gameLoop)
+    }
+
+    animationFrameRef.current = requestAnimationFrame(gameLoop)
+
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current)
+      }
+    }
+  }, [gameState, isRunning, isPaused, updateGame])
 
   const handleLogin = (username: string) => {
     // Set the player username
@@ -60,11 +91,9 @@ function App() {
       friendlyFire: false,
       worldSeed: Date.now(),
       modifiers: [],
-    })
+    }, gameMode)
     
     setGameState('game')
-    // Store game mode for future use (e.g., victory conditions)
-    console.log('Starting game with mode:', gameMode)
   }
 
   const handleStartTutorial = () => {
@@ -74,9 +103,9 @@ function App() {
       difficulty: 'easy',
       pvpEnabled: false,
       friendlyFire: false,
-      worldSeed: Date.now(),
+      worldSeed: 12345, // Fixed seed for consistent tutorial experience
       modifiers: [],
-    })
+    }, 'custom' as GameMode)
     
     setGameState('game')
     startTutorial()
@@ -84,7 +113,7 @@ function App() {
 
   const handleStartMultiplayer = (session: GameSession) => {
     // Initialize game with multiplayer session settings
-    startGame(session.settings)
+    startGame(session.settings, session.mode === 'pvp' ? 'custom' as GameMode : 'custom' as GameMode)
     setGameState('game')
   }
 
