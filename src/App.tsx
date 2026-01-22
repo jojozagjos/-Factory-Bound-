@@ -11,7 +11,8 @@ import LoginScreen from './components/LoginScreen/LoginScreen'
 import { useTutorialStore } from './store/tutorialStore'
 import { useGameStore } from './store/gameStore'
 import { useAutoSave } from './hooks/useAutoSave'
-import type { GameSession, GameMode } from './types/game'
+import { GameMode } from './types/game'
+import type { GameSession } from './types/game'
 import './App.css'
 
 type GameState = 'login' | 'menu' | 'game' | 'editor'
@@ -105,7 +106,7 @@ function App() {
       friendlyFire: false,
       worldSeed: 12345, // Fixed seed for consistent tutorial experience
       modifiers: [],
-    }, 'custom' as GameMode)
+    }, GameMode.CUSTOM)
     
     setGameState('game')
     startTutorial()
@@ -113,7 +114,8 @@ function App() {
 
   const handleStartMultiplayer = (session: GameSession) => {
     // Initialize game with multiplayer session settings
-    startGame(session.settings, session.mode === 'pvp' ? 'custom' as GameMode : 'custom' as GameMode)
+    // In multiplayer, use custom mode by default
+    startGame(session.settings, GameMode.CUSTOM)
     setGameState('game')
   }
 

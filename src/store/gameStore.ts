@@ -12,6 +12,7 @@ import type {
   GameMode,
   Enemy,
   Projectile,
+  MachineType,
 } from '../types/game'
 import { ProceduralGenerator } from '../engine/procedural/MapGenerator'
 import { SimulationEngine } from '../engine/simulation/SimulationEngine'
@@ -87,7 +88,7 @@ interface GameState {
   addToInventory: (item: Item) => boolean
   removeFromInventory: (itemName: string, quantity: number) => boolean
   gainExperience: (amount: number) => void
-  placeMachine: (machineType: string, position: { x: number; y: number }) => boolean
+  placeMachine: (machineType: MachineType, position: { x: number; y: number }) => boolean
 }
 
 export const useGameStore = create<GameState>()(
@@ -315,7 +316,7 @@ export const useGameStore = create<GameState>()(
       if (!canPlace) return false
       
       // Check building cost
-      const cost = buildingSystem.getBuildingCost(machineType as any)
+      const cost = buildingSystem.getBuildingCost(machineType)
       if (!cost) return false
       
       // Check if player has resources
@@ -338,7 +339,7 @@ export const useGameStore = create<GameState>()(
       // Create and place machine
       const newMachine: Machine = {
         id: `machine_${Date.now()}_${Math.random()}`,
-        type: machineType as any,
+        type: machineType,
         position,
         rotation: 0,
         inventory: [],
