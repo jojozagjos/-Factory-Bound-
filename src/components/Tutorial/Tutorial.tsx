@@ -67,13 +67,18 @@ const Tutorial = () => {
   if (!isActive || !currentStep) return null
 
   const totalSteps = 16 // Total number of tutorial steps
+  
+  // Don't show backdrop for camera controls step to allow interaction
+  const showBackdrop = currentStep.id !== 'camera_controls'
 
   return (
     <div className="tutorial-overlay" ref={overlayRef}>
-      <div className="tutorial-backdrop" onClick={(e) => {
-        // Prevent clicking through to game elements
-        e.stopPropagation()
-      }} />
+      {showBackdrop && (
+        <div className="tutorial-backdrop" onClick={(e) => {
+          // Prevent clicking through to game elements
+          e.stopPropagation()
+        }} />
+      )}
       
       <div className="tutorial-box">
         <div className="tutorial-header">

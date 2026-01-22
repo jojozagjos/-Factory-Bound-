@@ -15,7 +15,7 @@ export class NetworkManager {
   // syncInterval reserved for future periodic state synchronization
   // private syncInterval: number = 50 // ms between sync updates
 
-  constructor(private serverUrl: string = 'ws://localhost:3001') {}
+  constructor(private serverUrl: string = 'http://localhost:3001') {}
 
   connect(): Promise<void> {
     return new Promise((resolve, reject) => {

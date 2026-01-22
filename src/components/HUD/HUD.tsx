@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { useGameStore } from '../../store/gameStore'
 import './HUD.css'
 
@@ -19,6 +20,37 @@ const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree
   const toggleInventory = useGameStore(state => state.toggleInventory)
   const gameTime = useGameStore(state => state.gameTime)
   const gameModeManager = useGameStore(state => state.gameModeManager)
+  const session = useGameStore(state => state.session)
+  
+  const [showPauseMenu, setShowPauseMenu] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
+  const [showPlayerList, setShowPlayerList] = useState(false)
+  
+  const isMultiplayer = session?.settings?.maxPlayers && session.settings.maxPlayers > 1
+  
+  // Handle keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Toggle player list with Tab (only in multiplayer)
+      if (e.key === 'Tab' && isMultiplayer) {
+        e.preventDefault()
+        setShowPlayerList(prev => !prev)
+      }
+      
+      // Toggle pause menu with Escape
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        if (showPauseMenu) {
+          handleResume()
+        } else {
+          handlePauseToggle()
+        }
+      }
+    }
+    
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isMultiplayer, showPauseMenu])
   
   // Format game time
   const formatTime = (ms: number) => {
@@ -32,6 +64,31 @@ const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree
   const getResourceCount = (resourceName: string) => {
     const item = currentPlayer?.inventory.find(i => i.name === resourceName)
     return item?.quantity || 0
+  }
+  
+  const handlePauseToggle = () => {
+    if (!isPaused) {
+      togglePause()
+      setShowPauseMenu(true)
+    } else {
+      togglePause()
+      setShowPauseMenu(false)
+      setShowSettings(false)
+    }
+  }
+  
+  const handleReturnToMenu = () => {
+    setShowPauseMenu(false)
+    setShowSettings(false)
+    onReturnToMenu()
+  }
+  
+  const handleResume = () => {
+    if (isPaused) {
+      togglePause()
+    }
+    setShowPauseMenu(false)
+    setShowSettings(false)
   }
 
   return (
@@ -60,13 +117,16 @@ const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree
         </div>
 
         <div className="game-controls">
-          <button 
-            className={`control-btn ${isPaused ? 'active' : ''}`}
-            onClick={togglePause}
-            aria-label={isPaused ? 'Resume game' : 'Pause game'}
-          >
-            {isPaused ? '▶' : '⏸'}
-          </button>
+          {isMultiplayer && (
+            <button 
+              className={`control-btn ${showPlayerList ? 'active' : ''}`}
+              onClick={() => setShowPlayerList(!showPlayerList)}
+              aria-label="Toggle player list"
+              title="Player List (Tab)"
+            >
+              👥
+            </button>
+          )}
           <button 
             className="control-btn"
             onClick={onSave}
@@ -84,11 +144,12 @@ const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree
             📁
           </button>
           <button 
-            className="control-btn"
-            onClick={onReturnToMenu}
-            aria-label="Return to menu"
+            className={`control-btn ${isPaused ? 'active' : ''}`}
+            onClick={handlePauseToggle}
+            aria-label={isPaused ? 'Resume game' : 'Pause game'}
+            title="Pause Menu (ESC)"
           >
-            ⚙
+            {isPaused ? '▶' : '⏸'}
           </button>
         </div>
       </div>
@@ -204,11 +265,124 @@ const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree
         </div>
       )}
 
-      {/* Pause Overlay */}
-      {isPaused && (
+      {/* Player List (Multiplayer Only) */}
+      {isMultiplayer && showPlayerList && (
+        <div className="player-list-panel">
+          <div className="panel-header">
+            <h2>Players</h2>
+            <button 
+              className="close-btn"
+              onClick={() => setShowPlayerList(false)}
+              aria-label="Close player list"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="player-list-content">
+            {session?.players && session.players.length > 0 ? (
+              session.players.map((player) => (
+                <div key={player.id} className="player-list-item">
+                  <div className="player-info">
+                    <span className="player-name">{player.username}</span>
+                    <span className="player-level">Level {player.stats.level}</span>
+                  </div>
+                  <div className="player-health">
+                    <div className="health-bar-small">
+                      <div 
+                        className="health-fill"
+                        style={{ width: `${(player.health / player.maxHealth) * 100}%` }}
+                      />
+                    </div>
+                    <span className="health-text">{player.health}/{player.maxHealth}</span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="no-players">No other players</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Pause Menu */}
+      {showPauseMenu && isPaused && (
+        <div className="pause-menu-overlay">
+          <div className="pause-menu">
+            <h1>PAUSED</h1>
+            {!showSettings ? (
+              <div className="pause-menu-buttons">
+                <button 
+                  className="menu-btn primary" 
+                  onClick={handleResume}
+                >
+                  Resume Game
+                </button>
+                <button 
+                  className="menu-btn" 
+                  onClick={() => setShowSettings(true)}
+                >
+                  Settings
+                </button>
+                <button 
+                  className="menu-btn" 
+                  onClick={onSave}
+                >
+                  Save Game
+                </button>
+                <button 
+                  className="menu-btn danger" 
+                  onClick={handleReturnToMenu}
+                >
+                  Return to Menu
+                </button>
+              </div>
+            ) : (
+              <div className="pause-menu-settings">
+                <h2>Settings</h2>
+                <div className="settings-section">
+                  <h3>Graphics</h3>
+                  <label>
+                    <span>Quality</span>
+                    <select>
+                      <option>Low</option>
+                      <option>Medium</option>
+                      <option>High</option>
+                      <option>Ultra</option>
+                    </select>
+                  </label>
+                </div>
+                <div className="settings-section">
+                  <h3>Audio</h3>
+                  <label>
+                    <span>Master Volume</span>
+                    <input type="range" min="0" max="100" defaultValue="80" />
+                  </label>
+                  <label>
+                    <span>Music Volume</span>
+                    <input type="range" min="0" max="100" defaultValue="60" />
+                  </label>
+                  <label>
+                    <span>SFX Volume</span>
+                    <input type="range" min="0" max="100" defaultValue="80" />
+                  </label>
+                </div>
+                <button 
+                  className="menu-btn" 
+                  onClick={() => setShowSettings(false)}
+                >
+                  Back
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Simple Pause Overlay (when pause menu is not shown) */}
+      {isPaused && !showPauseMenu && (
         <div className="pause-overlay">
           <h1>PAUSED</h1>
-          <p>Press ESC or click ▶ to resume</p>
+          <p>Press ESC or click ⏸ to resume</p>
         </div>
       )}
     </div>

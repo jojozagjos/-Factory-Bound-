@@ -85,6 +85,13 @@ const MainMenu = ({ onStartGame, onStartTutorial, onStartMultiplayer }: MainMenu
               Multiplayer
             </button>
             <button 
+              className="menu-button primary"
+              onClick={onStartTutorial}
+              aria-label="Start Tutorial"
+            >
+              Tutorial
+            </button>
+            <button 
               className="menu-button"
               onClick={() => setShowSettings(true)}
               aria-label="Open Settings"
@@ -111,9 +118,6 @@ const MainMenu = ({ onStartGame, onStartTutorial, onStartMultiplayer }: MainMenu
               New Game
             </button>
             <button className="menu-button">Load Game</button>
-            <button className="menu-button primary" onClick={onStartTutorial}>
-              Tutorial
-            </button>
             <button 
               className="menu-button back" 
               onClick={() => setShowSinglePlayer(false)}

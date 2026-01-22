@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useGameStore } from '../../store/gameStore'
 import './Minimap.css'
 
@@ -9,10 +9,64 @@ interface MinimapProps {
 
 const Minimap = ({ width = 200, height = 200 }: MinimapProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
   const machines = useGameStore(state => state.machines)
   const enemies = useGameStore(state => state.enemies)
   const worldMap = useGameStore(state => state.worldMap)
   const currentPlayer = useGameStore(state => state.currentPlayer)
+  
+  const [mapOffset, setMapOffset] = useState({ x: 0, y: 0 })
+  const [mapZoom, setMapZoom] = useState(1)
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
+
+  // Handle mouse wheel for zoom
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      const zoomDelta = -e.deltaY * 0.001
+      setMapZoom(prev => Math.max(0.5, Math.min(3, prev + zoomDelta)))
+    }
+
+    container.addEventListener('wheel', handleWheel, { passive: false })
+    return () => container.removeEventListener('wheel', handleWheel)
+  }, [])
+
+  // Handle mouse drag for panning
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const handleMouseDown = (e: MouseEvent) => {
+      setIsDragging(true)
+      setDragStart({ x: e.clientX - mapOffset.x, y: e.clientY - mapOffset.y })
+    }
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging) return
+      setMapOffset({
+        x: e.clientX - dragStart.x,
+        y: e.clientY - dragStart.y
+      })
+    }
+
+    const handleMouseUp = () => {
+      setIsDragging(false)
+    }
+
+    container.addEventListener('mousedown', handleMouseDown)
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+
+    return () => {
+      container.removeEventListener('mousedown', handleMouseDown)
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isDragging, dragStart, mapOffset])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -38,10 +92,11 @@ const Minimap = ({ width = 200, height = 200 }: MinimapProps) => {
 
     const mapWidth = maxX - minX
     const mapHeight = maxY - minY
-    const scale = Math.min(width / mapWidth, height / mapHeight) * 0.9
+    const baseScale = Math.min(width / mapWidth, height / mapHeight) * 0.9
+    const scale = baseScale * mapZoom
 
-    const offsetX = (width - mapWidth * scale) / 2
-    const offsetY = (height - mapHeight * scale) / 2
+    const offsetX = (width - mapWidth * scale) / 2 + mapOffset.x * 0.1
+    const offsetY = (height - mapHeight * scale) / 2 + mapOffset.y * 0.1
 
     // Helper to convert world coords to minimap coords
     const toMinimapX = (x: number) => (x - minX) * scale + offsetX
@@ -107,10 +162,10 @@ const Minimap = ({ width = 200, height = 200 }: MinimapProps) => {
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)'
     ctx.lineWidth = 2
     ctx.strokeRect(0, 0, width, height)
-  }, [machines, enemies, worldMap, currentPlayer, width, height])
+  }, [machines, enemies, worldMap, currentPlayer, width, height, mapOffset, mapZoom])
 
   return (
-    <div className="minimap-container">
+    <div className="minimap-container" ref={containerRef} style={{ cursor: isDragging ? 'grabbing' : 'grab' }}>
       <canvas ref={canvasRef} width={width} height={height} className="minimap-canvas" />
       <div className="minimap-legend">
         <div className="legend-item">
@@ -125,6 +180,9 @@ const Minimap = ({ width = 200, height = 200 }: MinimapProps) => {
           <span className="legend-color" style={{ backgroundColor: '#dc2626' }} />
           <span>Enemies</span>
         </div>
+      </div>
+      <div className="minimap-controls">
+        <span className="zoom-indicator">Zoom: {Math.round(mapZoom * 100)}%</span>
       </div>
     </div>
   )
