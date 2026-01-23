@@ -300,6 +300,52 @@ export class BuildingSystem {
   }
 
   /**
+   * Create multiple bases for PVP mode (2-4 players)
+   * Bases are auto-placed at strategic positions on the map
+   * @param mapWidth Width of the map
+   * @param mapHeight Height of the map
+   * @param playerCount Number of players (2-4)
+   * @returns Array of base machines
+   */
+  createPVPBases(mapWidth: number, mapHeight: number, playerCount: number): Machine[] {
+    if (playerCount < 2 || playerCount > 4) {
+      throw new Error('PVP requires 2-4 players')
+    }
+
+    const bases: Machine[] = []
+    const margin = 20 // Distance from map edge
+    
+    // Define base positions for different player counts
+    const basePositions: Record<number, Position[]> = {
+      2: [
+        { x: margin, y: margin }, // Top-left
+        { x: mapWidth - margin, y: mapHeight - margin }, // Bottom-right
+      ],
+      3: [
+        { x: margin, y: margin }, // Top-left
+        { x: mapWidth - margin, y: margin }, // Top-right
+        { x: Math.floor(mapWidth / 2), y: mapHeight - margin }, // Bottom-center
+      ],
+      4: [
+        { x: margin, y: margin }, // Top-left
+        { x: mapWidth - margin, y: margin }, // Top-right
+        { x: margin, y: mapHeight - margin }, // Bottom-left
+        { x: mapWidth - margin, y: mapHeight - margin }, // Bottom-right
+      ],
+    }
+
+    const positions = basePositions[playerCount]
+    
+    positions.forEach((position, index) => {
+      const base = this.createStartingBase(position)
+      base.id = `base_player${index + 1}_${Date.now()}`
+      bases.push(base)
+    })
+
+    return bases
+  }
+
+  /**
    * Calculate grid position from screen coordinates
    */
   screenToGrid(screenX: number, screenY: number, tileSize: number): Position {

@@ -369,12 +369,6 @@ export const useGameStore = create<GameState>()(
       const generator = new ProceduralGenerator(fullSettings.worldSeed)
       state.worldMap = generator.generateMap(200, 200, fullSettings.modifiers)
       
-      // Place starting base in center of map (Builderment-style)
-      const centerX = Math.floor(state.worldMap.width / 2)
-      const centerY = Math.floor(state.worldMap.height / 2)
-      const startingBase = state.buildingSystem.createStartingBase({ x: centerX, y: centerY })
-      state.machines.push(startingBase)
-      
       // Initialize game systems
       state.currentGameMode = gameMode || ('custom' as GameMode)
       state.simulationEngine = new SimulationEngine()
@@ -385,14 +379,33 @@ export const useGameStore = create<GameState>()(
       // Initialize tech tree
       state.techTree = state.progressionSystem.getTechTree()
       
-      // Reset game state
+      // Reset game state BEFORE adding bases
       state.machines = []
       state.enemies = []
       state.projectiles = []
-      state.isRunning = true
       state.gameTime = 0
       state.lastUpdateTime = Date.now()
       state.isPaused = false
+      
+      // Place starting base(s) - single base for single-player/coop, multiple for PVP
+      if (fullSettings.pvpEnabled && fullSettings.maxPlayers >= 2 && fullSettings.maxPlayers <= 4) {
+        // PVP mode: Auto-place multiple bases for 2-4 players
+        const pvpBases = state.buildingSystem.createPVPBases(
+          state.worldMap.width,
+          state.worldMap.height,
+          fullSettings.maxPlayers
+        )
+        state.machines.push(...pvpBases)
+        console.log(`🏭 PVP mode: Placed ${pvpBases.length} bases for ${fullSettings.maxPlayers} players`)
+      } else {
+        // Single-player/Co-op mode: Place one base in center (Builderment-style)
+        const centerX = Math.floor(state.worldMap.width / 2)
+        const centerY = Math.floor(state.worldMap.height / 2)
+        const startingBase = state.buildingSystem.createStartingBase({ x: centerX, y: centerY })
+        state.machines.push(startingBase)
+      }
+      
+      state.isRunning = true
     }),
 
     stopGame: () => set((state) => {
