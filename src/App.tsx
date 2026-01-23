@@ -8,7 +8,6 @@ import BuildMenu from './components/BuildMenu/BuildMenu'
 import TechTree from './components/TechTree/TechTree'
 import SaveManager from './components/SaveManager/SaveManager'
 import LoginScreen from './components/LoginScreen/LoginScreen'
-import IntroScreen from './components/IntroScreen/IntroScreen'
 import GameOverScreen from './components/GameOverScreen/GameOverScreen'
 import ChatSystem from './components/ChatSystem/ChatSystem'
 import Minimap from './components/Minimap/Minimap'
@@ -29,13 +28,14 @@ import './App.css'
 type GameState = 'intro' | 'login' | 'menu' | 'game' | 'editor'
 
 function App() {
-  const [gameState, setGameState] = useState<GameState>('intro')
+  const [gameState, setGameState] = useState<GameState>('login')
   const [showNodeEditor, setShowNodeEditor] = useState(false)
   const [showBuildMenu, setShowBuildMenu] = useState(false)
   const [showTechTree, setShowTechTree] = useState(false)
   const [showSaveManager, setShowSaveManager] = useState(false)
   const [saveManagerMode, setSaveManagerMode] = useState<'save' | 'load'>('save')
   const startTutorial = useTutorialStore(state => state.startTutorial)
+  const isInTutorial = useTutorialStore(state => state.isActive)
   const startGame = useGameStore(state => state.startGame)
   const setPlayer = useGameStore(state => state.setPlayer)
   const selectedMachine = useGameStore(state => state.selectedMachine)
@@ -166,16 +166,21 @@ function App() {
     setGameState('menu')
   }
 
-  const handleStartGame = (gameMode: GameMode) => {
+  const handleStartGame = (gameMode: GameMode, worldSeed?: number, worldName?: string) => {
     // Initialize game with selected mode
     startGame({
       maxPlayers: 1,
       difficulty: 'normal',
       pvpEnabled: false,
       friendlyFire: false,
-      worldSeed: Date.now(),
+      worldSeed: worldSeed || Date.now(),
       modifiers: [],
     }, gameMode)
+    
+    // Store world name if provided (could be used for save file name)
+    if (worldName) {
+      console.log('World name:', worldName)
+    }
     
     setGameState('game')
   }
@@ -269,9 +274,6 @@ function App() {
 
   return (
     <div className="app">
-      {gameState === 'intro' && (
-        <IntroScreen onComplete={() => setGameState('login')} />
-      )}
       {gameState === 'login' && (
         <LoginScreen onLogin={handleLogin} />
       )}
@@ -293,6 +295,7 @@ function App() {
             onOpenTechTree={() => setShowTechTree(true)}
             onSave={() => handleOpenSaveManager('save')}
             onLoad={() => handleOpenSaveManager('load')}
+            inTutorial={isInTutorial}
           />
           {showNodeEditor && (
             <NodeEditor onClose={() => setShowNodeEditor(false)} />

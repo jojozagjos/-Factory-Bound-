@@ -96,7 +96,7 @@ export class SimulationEngine {
 
     // Execute node program if present
     if (machine.nodeProgram) {
-      this.executeNodeProgram(machine, allMachines)
+      this.executeNodeProgram(machine)
     }
   }
 
@@ -256,7 +256,7 @@ export class SimulationEngine {
     }
   }
 
-  private executeNodeProgram(machine: Machine, _allMachines: Machine[]): void {
+  private executeNodeProgram(machine: Machine): void {
     // Execute visual programming logic
     if (!machine.nodeProgram) return
 
@@ -280,7 +280,7 @@ export class SimulationEngine {
           }
           break
 
-        case 'logic':
+        case 'logic': {
           // Logic nodes - perform operations
           const inputs = connections
             .filter(conn => conn.to === node.id)
@@ -296,8 +296,9 @@ export class SimulationEngine {
             nodeOutputs.set(node.id, inputs.some(v => v > 0) ? 1 : 0)
           }
           break
+        }
 
-        case 'output':
+        case 'output': {
           // Action nodes - control machine behavior
           const outputInputs = connections
             .filter(conn => conn.to === node.id)
@@ -310,6 +311,7 @@ export class SimulationEngine {
             machine.power.required = shouldActivate ? this.getDefaultPowerRequirement(machine.type) : 0
           }
           break
+        }
       }
     })
   }

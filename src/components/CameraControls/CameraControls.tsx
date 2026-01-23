@@ -42,8 +42,8 @@ const CameraControls = ({ camera, onCameraChange, canvasRef, worldBounds }: Came
     let lastMousePos = { x: 0, y: 0 }
 
     const handleMouseDown = (e: MouseEvent) => {
-      // Right click or middle click for panning
-      if (e.button === 2 || e.button === 1) {
+      // Left click for panning
+      if (e.button === 0) {
         isPanning = true
         lastMousePos = { x: e.clientX, y: e.clientY }
         canvas.style.cursor = 'grabbing'
@@ -69,7 +69,7 @@ const CameraControls = ({ camera, onCameraChange, canvasRef, worldBounds }: Came
     }
 
     const handleMouseUp = (e: MouseEvent) => {
-      if (e.button === 2 || e.button === 1) {
+      if (e.button === 0) {
         isPanning = false
         canvas.style.cursor = 'default'
       }

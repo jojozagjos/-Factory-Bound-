@@ -1,37 +1,28 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
+import { useKeybindStore } from '../../store/keybindStore'
 import './KeyboardHelp.css'
 
 const KeyboardHelp = () => {
   const [isVisible, setIsVisible] = useState(false)
+  const keybinds = useKeybindStore(state => state.keybinds)
 
-  const shortcuts = [
-    { category: 'Camera Controls', items: [
-      { keys: ['Right Click + Drag'], description: 'Pan camera' },
-      { keys: ['Middle Click + Drag'], description: 'Pan camera' },
-      { keys: ['Mouse Wheel'], description: 'Zoom in/out' },
-      { keys: ['+', '-'], description: 'Zoom in/out' },
-      { keys: ['0'], description: 'Reset camera' },
-    ]},
-    { category: 'Game Controls', items: [
-      { keys: ['Space'], description: 'Pause/Resume game' },
-      { keys: ['I'], description: 'Toggle inventory' },
-      { keys: ['B'], description: 'Toggle build menu' },
-      { keys: ['T'], description: 'Toggle tech tree' },
-      { keys: ['N'], description: 'Toggle node editor' },
-      { keys: ['M'], description: 'Toggle minimap' },
-      { keys: ['Esc'], description: 'Cancel/Close' },
-    ]},
-    { category: 'Multiplayer', items: [
-      { keys: ['Enter'], description: 'Open chat / Send message' },
-      { keys: ['Tab'], description: 'Toggle player list' },
-      { keys: ['Esc'], description: 'Close chat' },
-    ]},
-    { category: 'Building', items: [
-      { keys: ['Left Click'], description: 'Select machine / Place building' },
-      { keys: ['Esc'], description: 'Cancel building mode' },
-      { keys: ['Delete'], description: 'Destroy selected machine' },
-    ]},
-  ]
+  const shortcuts = useMemo(() => {
+    const groupedKeybinds = keybinds.reduce((acc, kb) => {
+      if (!acc[kb.category]) {
+        acc[kb.category] = []
+      }
+      acc[kb.category].push({
+        keys: [kb.key],
+        description: kb.description
+      })
+      return acc
+    }, {} as Record<string, Array<{ keys: string[], description: string }>>)
+
+    return Object.entries(groupedKeybinds).map(([category, items]) => ({
+      category,
+      items
+    }))
+  }, [keybinds])
 
   return (
     <>

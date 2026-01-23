@@ -145,6 +145,22 @@
   box-shadow: 0 5px 20px rgba(239, 68, 68, 0.3);
 }
 
+.menu-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.warning-message {
+  background: rgba(255, 152, 0, 0.1);
+  border: 1px solid rgba(255, 152, 0, 0.5);
+  color: #ff9800;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  text-align: center;
+  font-weight: bold;
+}
+
 .sub-menu {
   animation: slideInSmooth 0.3s ease-out;
 }

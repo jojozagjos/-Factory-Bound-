@@ -15,8 +15,30 @@ const GameCanvas = () => {
   const selectMachine = useGameStore(state => state.selectMachine)
   const [buildingMode, setBuildingMode] = useState<MachineType | null>(null)
   const [ghostPosition, setGhostPosition] = useState<{ x: number; y: number } | null>(null)
-  const [camera, setCamera] = useState<CameraState>({ x: 0, y: 0, zoom: 1 })
+  const [camera, setCamera] = useState<CameraState>(() => {
+    // Calculate world center - will be updated when worldMap loads
+    const gridSize = 50
+    const worldWidth = 100 // Default world size
+    const worldHeight = 100
+    return {
+      x: (worldWidth * gridSize) / 2,
+      y: (worldHeight * gridSize) / 2,
+      zoom: 1
+    }
+  })
   const [showGrid, setShowGrid] = useState(true)
+
+  // Update camera position when worldMap loads
+  useEffect(() => {
+    if (worldMap) {
+      const gridSize = 50
+      setCamera({
+        x: (worldMap.width * gridSize) / 2,
+        y: (worldMap.height * gridSize) / 2,
+        zoom: 1
+      })
+    }
+  }, [worldMap])
 
   // Listen for grid toggle
   useEffect(() => {
@@ -87,29 +109,49 @@ const GameCanvas = () => {
                 ctx.fillStyle = '#1e3a8a'
                 ctx.fillRect(screenX, screenY, gridSize, gridSize)
                 // Add water texture
-                ctx.fillStyle = '#2563eb'
-                ctx.fillRect(screenX + 2, screenY + 2, gridSize - 4, gridSize - 4)
+                if (showGrid) {
+                  ctx.fillStyle = '#2563eb'
+                  ctx.fillRect(screenX + 2, screenY + 2, gridSize - 4, gridSize - 4)
+                } else {
+                  ctx.fillStyle = '#2563eb'
+                  ctx.fillRect(screenX, screenY, gridSize, gridSize)
+                }
                 break
               case 'grass':
                 ctx.fillStyle = '#15803d'
                 ctx.fillRect(screenX, screenY, gridSize, gridSize)
                 // Add grass texture
-                ctx.fillStyle = '#16a34a'
-                ctx.fillRect(screenX + 1, screenY + 1, gridSize - 2, gridSize - 2)
+                if (showGrid) {
+                  ctx.fillStyle = '#16a34a'
+                  ctx.fillRect(screenX + 1, screenY + 1, gridSize - 2, gridSize - 2)
+                } else {
+                  ctx.fillStyle = '#16a34a'
+                  ctx.fillRect(screenX, screenY, gridSize, gridSize)
+                }
                 break
               case 'stone':
                 ctx.fillStyle = '#52525b'
                 ctx.fillRect(screenX, screenY, gridSize, gridSize)
                 // Add stone texture
-                ctx.fillStyle = '#71717a'
-                ctx.fillRect(screenX + 2, screenY + 2, gridSize - 4, gridSize - 4)
+                if (showGrid) {
+                  ctx.fillStyle = '#71717a'
+                  ctx.fillRect(screenX + 2, screenY + 2, gridSize - 4, gridSize - 4)
+                } else {
+                  ctx.fillStyle = '#71717a'
+                  ctx.fillRect(screenX, screenY, gridSize, gridSize)
+                }
                 break
               case 'sand':
                 ctx.fillStyle = '#ca8a04'
                 ctx.fillRect(screenX, screenY, gridSize, gridSize)
                 // Add sand texture
-                ctx.fillStyle = '#eab308'
-                ctx.fillRect(screenX + 1, screenY + 1, gridSize - 2, gridSize - 2)
+                if (showGrid) {
+                  ctx.fillStyle = '#eab308'
+                  ctx.fillRect(screenX + 1, screenY + 1, gridSize - 2, gridSize - 2)
+                } else {
+                  ctx.fillStyle = '#eab308'
+                  ctx.fillRect(screenX, screenY, gridSize, gridSize)
+                }
                 break
               default:
                 ctx.fillStyle = '#1a1a1a'

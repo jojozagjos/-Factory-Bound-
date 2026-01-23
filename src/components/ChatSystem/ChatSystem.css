@@ -90,11 +90,18 @@
 .chat-message {
   display: flex;
   gap: 0.5rem;
+  align-items: center;
   flex-wrap: wrap;
   padding: 0.5rem;
   background: rgba(42, 42, 42, 0.3);
   border-radius: 6px;
   animation: messageSlideIn 0.2s ease;
+}
+
+.chat-avatar {
+  font-size: 1.2rem;
+  min-width: 24px;
+  text-align: center;
 }
 
 @keyframes messageSlideIn {

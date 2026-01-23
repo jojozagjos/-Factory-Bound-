@@ -37,34 +37,78 @@ const Tutorial = () => {
         if (tutorialBox) {
           tutorialBox.style.position = 'fixed'
           
+          // Get tutorial box dimensions
+          const boxWidth = 400 // Approximate width
+          const boxHeight = 250 // Approximate height
+          const padding = 20
+          const viewportWidth = window.innerWidth
+          const viewportHeight = window.innerHeight
+          
+          let left = 0
+          let top = 0
+          let transform = ''
+          
           switch (currentStep.position) {
             case 'top':
-              tutorialBox.style.left = `${rect.left + rect.width / 2}px`
-              tutorialBox.style.top = `${rect.top - 20}px`
-              tutorialBox.style.transform = 'translate(-50%, -100%)'
+              left = rect.left + rect.width / 2
+              top = rect.top - padding
+              transform = 'translate(-50%, -100%)'
+              // Keep on screen
+              if (top - boxHeight < 0) {
+                // Not enough room above, place below instead
+                top = rect.bottom + padding
+                transform = 'translate(-50%, 0)'
+              }
               break
             case 'bottom':
-              tutorialBox.style.left = `${rect.left + rect.width / 2}px`
-              tutorialBox.style.top = `${rect.bottom + 20}px`
-              tutorialBox.style.transform = 'translate(-50%, 0)'
+              left = rect.left + rect.width / 2
+              top = rect.bottom + padding
+              transform = 'translate(-50%, 0)'
+              // Keep on screen
+              if (top + boxHeight > viewportHeight) {
+                // Not enough room below, place above instead
+                top = rect.top - padding
+                transform = 'translate(-50%, -100%)'
+              }
               break
             case 'left':
-              tutorialBox.style.left = `${rect.left - 20}px`
-              tutorialBox.style.top = `${rect.top + rect.height / 2}px`
-              tutorialBox.style.transform = 'translate(-100%, -50%)'
+              left = rect.left - padding
+              top = rect.top + rect.height / 2
+              transform = 'translate(-100%, -50%)'
+              // Keep on screen
+              if (left - boxWidth < 0) {
+                // Not enough room on left, place on right instead
+                left = rect.right + padding
+                transform = 'translate(0, -50%)'
+              }
               break
             case 'right':
-              tutorialBox.style.left = `${rect.right + 20}px`
-              tutorialBox.style.top = `${rect.top + rect.height / 2}px`
-              tutorialBox.style.transform = 'translate(0, -50%)'
+              left = rect.right + padding
+              top = rect.top + rect.height / 2
+              transform = 'translate(0, -50%)'
+              // Keep on screen
+              if (left + boxWidth > viewportWidth) {
+                // Not enough room on right, place on left instead
+                left = rect.left - padding
+                transform = 'translate(-100%, -50%)'
+              }
               break
             case 'center':
             default:
-              tutorialBox.style.left = '50%'
-              tutorialBox.style.top = '50%'
-              tutorialBox.style.transform = 'translate(-50%, -50%)'
+              left = viewportWidth / 2
+              top = viewportHeight / 2
+              transform = 'translate(-50%, -50%)'
               break
           }
+          
+          // Clamp to viewport bounds
+          if (transform.includes('-50%')) {
+            left = Math.max(boxWidth / 2, Math.min(viewportWidth - boxWidth / 2, left))
+          }
+          
+          tutorialBox.style.left = `${left}px`
+          tutorialBox.style.top = `${top}px`
+          tutorialBox.style.transform = transform
         }
 
         // Add highlight effect to target
@@ -98,7 +142,11 @@ const Tutorial = () => {
           <h2>{currentStep.title}</h2>
           <button 
             className="tutorial-skip-btn"
-            onClick={skipTutorial}
+            onClick={() => {
+              skipTutorial()
+              // Dispatch custom event to return to menu
+              window.dispatchEvent(new CustomEvent('tutorialComplete'))
+            }}
             aria-label="Skip tutorial"
           >
             ✕ Skip Tutorial
