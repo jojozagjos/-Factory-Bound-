@@ -157,6 +157,21 @@ export interface Badge {
   rarity: 'common' | 'rare' | 'epic' | 'legendary'
 }
 
+// Machine unlock system (Builderment-style)
+export interface MachineUnlock {
+  machineType: MachineType
+  requiredDeliveries: Item[] // Resources that must be delivered to base to unlock
+  unlocked: boolean
+  order: number // Unlock order/tier
+}
+
+// Base resource delivery tracking
+export interface ResourceDelivery {
+  itemName: string
+  quantityDelivered: number
+  quantityRequired: number
+}
+
 // Tech Tree
 export interface TechNode {
   id: string
@@ -194,6 +209,12 @@ export interface GameSettings {
   friendlyFire: boolean
   worldSeed: number
   modifiers: WorldModifier[]
+  // New Builderment-style settings
+  enemiesEnabled: boolean
+  enemyFactoriesEnabled: boolean
+  oceanEnemiesEnabled: boolean
+  maxEnemyBases: number
+  gameMode: 'automation' | 'coop' | 'pvp' | 'ranked'
 }
 
 // Save system
@@ -225,6 +246,18 @@ export interface Enemy {
   health: number
   maxHealth: number
   target?: string
+  spawnedFrom?: string // ID of enemy factory that spawned this enemy
+}
+
+// Enemy factory/base system
+export interface EnemyFactory {
+  id: string
+  position: Position
+  health: number
+  maxHealth: number
+  spawnRate: number // Enemies per minute
+  lastSpawnTime: number
+  isOceanBase: boolean // Spawned from ocean
 }
 
 // Ranking and Prestige
