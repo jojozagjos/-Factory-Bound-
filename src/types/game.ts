@@ -34,7 +34,7 @@ export interface Machine {
   maxHealth: number
   nodeProgram?: NodeProgram
   isBase?: boolean // Flag for starting base
-  baseEntrances?: Position[] // For base type, positions of 4 entrances
+  baseEntrances?: Position[] // For base type, absolute grid coordinates of 4 entrances
 }
 
 // Item and Recipe types

@@ -6,6 +6,9 @@ interface ProfileScreenProps {
   onClose: () => void
 }
 
+const MAX_PROFILE_IMAGE_SIZE_MB = 2
+const MAX_PROFILE_IMAGE_SIZE_BYTES = MAX_PROFILE_IMAGE_SIZE_MB * 1024 * 1024
+
 const ProfileScreen = ({ onClose }: ProfileScreenProps) => {
   const currentPlayer = useGameStore(state => state.currentPlayer)
   const profilePictureFile = useGameStore(state => state.profilePictureFile)
@@ -25,8 +28,8 @@ const ProfileScreen = ({ onClose }: ProfileScreenProps) => {
     }
 
     // Validate file size (max 2MB)
-    if (file.size > 2 * 1024 * 1024) {
-      setUploadError('Image must be smaller than 2MB')
+    if (file.size > MAX_PROFILE_IMAGE_SIZE_BYTES) {
+      setUploadError(`Image must be smaller than ${MAX_PROFILE_IMAGE_SIZE_MB}MB`)
       return
     }
 
@@ -151,7 +154,7 @@ const ProfileScreen = ({ onClose }: ProfileScreenProps) => {
               </div>
               {uploadError && <div className="upload-error">{uploadError}</div>}
               <div className="upload-hint">
-                💡 Upload a profile picture (Max 2MB, JPG/PNG/GIF)
+                💡 Upload a profile picture (Max {MAX_PROFILE_IMAGE_SIZE_MB}MB, JPG/PNG/GIF)
               </div>
             </div>
           </div>

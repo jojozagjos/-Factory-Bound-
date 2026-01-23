@@ -272,6 +272,8 @@ export class BuildingSystem {
    * Create the starting base with 4 entrances (Builderment-style)
    */
   createStartingBase(centerPosition: Position): Machine {
+    const BASE_ENTRANCE_OFFSET = 2 // Distance of entrances from base center
+    
     const base: Machine = {
       id: `base_${Date.now()}`,
       type: 'base' as MachineType,
@@ -286,12 +288,12 @@ export class BuildingSystem {
       health: 1000,
       maxHealth: 1000,
       isBase: true,
-      // 4 entrances: top, right, bottom, left (relative to center)
+      // 4 entrances: top, right, bottom, left (absolute grid coordinates)
       baseEntrances: [
-        { x: centerPosition.x, y: centerPosition.y - 2 }, // Top
-        { x: centerPosition.x + 2, y: centerPosition.y }, // Right
-        { x: centerPosition.x, y: centerPosition.y + 2 }, // Bottom
-        { x: centerPosition.x - 2, y: centerPosition.y }, // Left
+        { x: centerPosition.x, y: centerPosition.y - BASE_ENTRANCE_OFFSET }, // Top
+        { x: centerPosition.x + BASE_ENTRANCE_OFFSET, y: centerPosition.y }, // Right
+        { x: centerPosition.x, y: centerPosition.y + BASE_ENTRANCE_OFFSET }, // Bottom
+        { x: centerPosition.x - BASE_ENTRANCE_OFFSET, y: centerPosition.y }, // Left
       ],
     }
     return base

@@ -4,6 +4,9 @@ import CameraControls, { type CameraState } from '../CameraControls/CameraContro
 import type { MachineType } from '../../types/game'
 import './GameCanvas.css'
 
+const BASE_ICON = '🏭'
+const BASE_ICON_FONT_SIZE = 24
+
 const GameCanvas = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const machines = useGameStore(state => state.machines)
@@ -269,7 +272,7 @@ const GameCanvas = () => {
         }
 
         // Special rendering for base
-        if (machine.isBase && machine.baseEntrances) {
+        if (machine.type === 'base') {
           // Draw larger base structure (3x3 tiles)
           ctx.fillStyle = color
           ctx.fillRect(-gridSize * 1.5 + 5, -gridSize * 1.5 + 5, gridSize * 3 - 10, gridSize * 3 - 10)
@@ -280,22 +283,24 @@ const GameCanvas = () => {
           ctx.strokeRect(-gridSize * 1.5 + 5, -gridSize * 1.5 + 5, gridSize * 3 - 10, gridSize * 3 - 10)
           
           // Draw entrances as smaller colored squares
-          machine.baseEntrances.forEach(entrance => {
-            const relX = (entrance.x - machine.position.x) * gridSize
-            const relY = (entrance.y - machine.position.y) * gridSize
-            ctx.fillStyle = '#fbbf24'
-            ctx.fillRect(relX - 10, relY - 10, 20, 20)
-            ctx.strokeStyle = '#fff'
-            ctx.lineWidth = 2
-            ctx.strokeRect(relX - 10, relY - 10, 20, 20)
-          })
+          if (machine.baseEntrances) {
+            machine.baseEntrances.forEach(entrance => {
+              const relX = (entrance.x - machine.position.x) * gridSize
+              const relY = (entrance.y - machine.position.y) * gridSize
+              ctx.fillStyle = '#fbbf24'
+              ctx.fillRect(relX - 10, relY - 10, 20, 20)
+              ctx.strokeStyle = '#fff'
+              ctx.lineWidth = 2
+              ctx.strokeRect(relX - 10, relY - 10, 20, 20)
+            })
+          }
           
           // Draw base icon/text
           ctx.fillStyle = '#fff'
-          ctx.font = '24px Arial'
+          ctx.font = `${BASE_ICON_FONT_SIZE}px Arial`
           ctx.textAlign = 'center'
           ctx.textBaseline = 'middle'
-          ctx.fillText('🏭', 0, 0)
+          ctx.fillText(BASE_ICON, 0, 0)
         } else {
           // Normal machine rendering
           ctx.fillStyle = color
