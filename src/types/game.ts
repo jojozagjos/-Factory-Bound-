@@ -129,6 +129,31 @@ export interface PlayerStats {
   completedResearch: string[]
 }
 
+// Global statistics that persist across all saves
+export interface GlobalStats {
+  totalMachinesPlaced: number
+  totalMachinesDestroyed: number
+  totalResourcesGathered: number
+  totalItemsCrafted: number
+  totalEnemiesKilled: number
+  totalPlaytime: number // in seconds
+  totalGamesPlayed: number
+  totalGamesWon: number
+  rankedWins: number
+  rankedLosses: number
+  currentRank: string
+  badges: Badge[]
+}
+
+export interface Badge {
+  id: string
+  name: string
+  description: string
+  icon: string
+  unlockedAt: number
+  rarity: 'common' | 'rare' | 'epic' | 'legendary'
+}
+
 // Tech Tree
 export interface TechNode {
   id: string

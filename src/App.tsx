@@ -59,6 +59,14 @@ function App() {
   // Enable auto-save when in game
   useAutoSave(gameState === 'game')
 
+  // Load profile picture from localStorage on mount
+  useEffect(() => {
+    const savedPicture = localStorage.getItem('factory_bound_profile_picture')
+    if (savedPicture) {
+      useGameStore.getState().setProfilePictureFile(savedPicture)
+    }
+  }, [])
+
   // Listen for tutorial completion
   useEffect(() => {
     const handleTutorialComplete = () => {

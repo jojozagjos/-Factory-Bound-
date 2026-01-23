@@ -1,31 +1,75 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useGameStore } from '../../store/gameStore'
-import { achievementSystem } from '../../systems/AchievementSystem/AchievementSystem'
 import './ProfileScreen.css'
 
 interface ProfileScreenProps {
   onClose: () => void
 }
 
-const AVATAR_OPTIONS = [
-  '👤', '👨', '👩', '👨‍💼', '👩‍💼', '🧑‍💻', '👨‍🔬', '👩‍🔬',
-  '🤖', '👽', '🦊', '🐻', '🐼', '🐯', '🦁', '🐮',
-  '⚙️', '🔧', '🏭', '🚀', '⚡', '🔥', '💎', '⭐'
-]
-
 const ProfileScreen = ({ onClose }: ProfileScreenProps) => {
   const currentPlayer = useGameStore(state => state.currentPlayer)
-  const profilePicture = useGameStore(state => state.profilePicture)
-  const setProfilePicture = useGameStore(state => state.setProfilePicture)
-  const [selectedAvatar, setSelectedAvatar] = useState(profilePicture)
+  const profilePictureFile = useGameStore(state => state.profilePictureFile)
+  const setProfilePictureFile = useGameStore(state => state.setProfilePictureFile)
+  const globalStats = useGameStore(state => state.globalStats)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [uploadError, setUploadError] = useState<string>('')
 
-  const achievements = achievementSystem.getAll()
-  const unlockedAchievements = achievements.filter(a => a.unlocked)
-  const totalAchievements = achievements.length
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
 
-  const handleSaveAvatar = () => {
-    setProfilePicture(selectedAvatar)
-    onClose()
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setUploadError('Please select an image file')
+      return
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      setUploadError('Image must be smaller than 2MB')
+      return
+    }
+
+    // Read and convert to base64
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const result = e.target?.result as string
+      setProfilePictureFile(result)
+      localStorage.setItem('factory_bound_profile_picture', result)
+      setUploadError('')
+    }
+    reader.onerror = () => {
+      setUploadError('Failed to read image file')
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleRemoveImage = () => {
+    setProfilePictureFile(null)
+    localStorage.removeItem('factory_bound_profile_picture')
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
+  const formatTime = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600)
+    const minutes = Math.floor((seconds % 3600) / 60)
+    return `${hours}h ${minutes}m`
+  }
+
+  const getRankColor = (rank: string) => {
+    const ranks: Record<string, string> = {
+      'Unranked': '#888',
+      'Bronze': '#cd7f32',
+      'Silver': '#c0c0c0',
+      'Gold': '#ffd700',
+      'Platinum': '#e5e4e2',
+      'Diamond': '#b9f2ff',
+      'Master': '#ff00ff',
+      'Grandmaster': '#ff6b6b',
+    }
+    return ranks[rank] || '#888'
   }
 
   return (
@@ -44,12 +88,21 @@ const ProfileScreen = ({ onClose }: ProfileScreenProps) => {
             <h2>Profile Information</h2>
             <div className="profile-info-grid">
               <div className="profile-avatar-display">
-                <div className="current-avatar">{profilePicture}</div>
+                {profilePictureFile ? (
+                  <div className="custom-avatar">
+                    <img src={profilePictureFile} alt="Profile" />
+                  </div>
+                ) : (
+                  <div className="default-avatar">👤</div>
+                )}
                 <div className="profile-username">{currentPlayer?.username || 'Guest'}</div>
+                <div className="profile-rank" style={{ color: getRankColor(globalStats.currentRank) }}>
+                  {globalStats.currentRank}
+                </div>
               </div>
               <div className="profile-stats-summary">
                 <div className="stat-item">
-                  <span className="stat-label">Level</span>
+                  <span className="stat-label">Current Level</span>
                   <span className="stat-value">{currentPlayer?.stats.level || 1}</span>
                 </div>
                 <div className="stat-item">
@@ -61,114 +114,137 @@ const ProfileScreen = ({ onClose }: ProfileScreenProps) => {
                   <span className="stat-value">{currentPlayer?.stats.prestigeLevel || 0}</span>
                 </div>
                 <div className="stat-item">
-                  <span className="stat-label">Research</span>
-                  <span className="stat-value">{currentPlayer?.stats.completedResearch.length || 0}</span>
+                  <span className="stat-label">Ranked Record</span>
+                  <span className="stat-value">{globalStats.rankedWins}W - {globalStats.rankedLosses}L</span>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Avatar Selector */}
+          {/* Custom Profile Picture Upload */}
           <div className="profile-section">
-            <h2>Choose Avatar</h2>
-            <div className="avatar-grid">
-              {AVATAR_OPTIONS.map((avatar) => (
-                <button
-                  key={avatar}
-                  className={`avatar-option ${selectedAvatar === avatar ? 'selected' : ''}`}
-                  onClick={() => setSelectedAvatar(avatar)}
-                  aria-label={`Select avatar ${avatar}`}
+            <h2>Profile Picture</h2>
+            <div className="avatar-upload-section">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileUpload}
+                style={{ display: 'none' }}
+                id="profile-picture-upload"
+              />
+              <div className="upload-controls">
+                <button 
+                  className="upload-btn"
+                  onClick={() => fileInputRef.current?.click()}
                 >
-                  {avatar}
+                  📸 Upload Custom Image
                 </button>
-              ))}
+                {profilePictureFile && (
+                  <button 
+                    className="remove-btn"
+                    onClick={handleRemoveImage}
+                  >
+                    🗑️ Remove Image
+                  </button>
+                )}
+              </div>
+              {uploadError && <div className="upload-error">{uploadError}</div>}
+              <div className="upload-hint">
+                💡 Upload a profile picture (Max 2MB, JPG/PNG/GIF)
+              </div>
             </div>
-            {selectedAvatar !== profilePicture && (
-              <button className="save-avatar-btn" onClick={handleSaveAvatar}>
-                Save Avatar
-              </button>
-            )}
           </div>
 
-          {/* Achievements Section */}
+          {/* Global Statistics */}
           <div className="profile-section">
-            <h2>
-              🏆 Achievements ({unlockedAchievements.length}/{totalAchievements})
-            </h2>
-            <div className="achievements-list">
-              {achievements.length > 0 ? (
-                achievements.map((achievement) => (
+            <h2>📊 Career Statistics</h2>
+            <p className="stats-description">These statistics are tracked across all your saves</p>
+            <div className="stats-grid">
+              <div className="stat-card">
+                <div className="stat-icon">🏭</div>
+                <div className="stat-info">
+                  <div className="stat-label">Machines Placed</div>
+                  <div className="stat-value">{globalStats.totalMachinesPlaced.toLocaleString()}</div>
+                </div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-icon">💥</div>
+                <div className="stat-info">
+                  <div className="stat-label">Machines Destroyed</div>
+                  <div className="stat-value">{globalStats.totalMachinesDestroyed.toLocaleString()}</div>
+                </div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-icon">⛏️</div>
+                <div className="stat-info">
+                  <div className="stat-label">Resources Gathered</div>
+                  <div className="stat-value">{globalStats.totalResourcesGathered.toLocaleString()}</div>
+                </div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-icon">🔨</div>
+                <div className="stat-info">
+                  <div className="stat-label">Items Crafted</div>
+                  <div className="stat-value">{globalStats.totalItemsCrafted.toLocaleString()}</div>
+                </div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-icon">⚔️</div>
+                <div className="stat-info">
+                  <div className="stat-label">Enemies Killed</div>
+                  <div className="stat-value">{globalStats.totalEnemiesKilled.toLocaleString()}</div>
+                </div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-icon">⏱️</div>
+                <div className="stat-info">
+                  <div className="stat-label">Total Playtime</div>
+                  <div className="stat-value">{formatTime(globalStats.totalPlaytime)}</div>
+                </div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-icon">🎮</div>
+                <div className="stat-info">
+                  <div className="stat-label">Games Played</div>
+                  <div className="stat-value">{globalStats.totalGamesPlayed}</div>
+                </div>
+              </div>
+              <div className="stat-card">
+                <div className="stat-icon">🏆</div>
+                <div className="stat-info">
+                  <div className="stat-label">Games Won</div>
+                  <div className="stat-value">{globalStats.totalGamesWon}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Badges Section */}
+          <div className="profile-section">
+            <h2>🎖️ Ranked Badges ({globalStats.badges.length})</h2>
+            <div className="badges-grid">
+              {globalStats.badges.length > 0 ? (
+                globalStats.badges.map((badge) => (
                   <div
-                    key={achievement.id}
-                    className={`achievement-item ${achievement.unlocked ? 'unlocked' : 'locked'}`}
+                    key={badge.id}
+                    className={`badge-item ${badge.rarity}`}
                   >
-                    <div className="achievement-icon">{achievement.icon}</div>
-                    <div className="achievement-info">
-                      <div className="achievement-title">{achievement.name}</div>
-                      <div className="achievement-description">{achievement.description}</div>
-                      {achievement.progress !== undefined && achievement.maxProgress && (
-                        <div className="achievement-progress">
-                          <div className="progress-bar">
-                            <div
-                              className="progress-fill"
-                              style={{
-                                width: `${(achievement.progress / achievement.maxProgress) * 100}%`
-                              }}
-                            />
-                          </div>
-                          <span className="progress-text">
-                            {achievement.progress}/{achievement.maxProgress}
-                          </span>
-                        </div>
-                      )}
+                    <div className="badge-icon">{badge.icon}</div>
+                    <div className="badge-info">
+                      <div className="badge-title">{badge.name}</div>
+                      <div className="badge-description">{badge.description}</div>
+                      <div className="badge-date">
+                        Unlocked: {new Date(badge.unlockedAt).toLocaleDateString()}
+                      </div>
                     </div>
-                    {achievement.unlocked && (
-                      <div className="achievement-unlocked-badge">✓</div>
-                    )}
                   </div>
                 ))
               ) : (
-                <p className="no-achievements">No achievements yet. Start playing to unlock!</p>
+                <p className="no-badges">
+                  🎯 Play ranked matches to earn badges!
+                </p>
               )}
-            </div>
-          </div>
-
-          {/* Player Stats */}
-          <div className="profile-section">
-            <h2>📊 Statistics</h2>
-            <div className="stats-grid">
-              <div className="stat-card">
-                <div className="stat-icon">❤️</div>
-                <div className="stat-info">
-                  <div className="stat-label">Health</div>
-                  <div className="stat-value">
-                    {currentPlayer?.health || 0}/{currentPlayer?.maxHealth || 100}
-                  </div>
-                </div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-icon">🎒</div>
-                <div className="stat-info">
-                  <div className="stat-label">Inventory Items</div>
-                  <div className="stat-value">{currentPlayer?.inventory.length || 0}</div>
-                </div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-icon">🔬</div>
-                <div className="stat-info">
-                  <div className="stat-label">Techs Unlocked</div>
-                  <div className="stat-value">{currentPlayer?.stats.unlockedTech.length || 0}</div>
-                </div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-icon">⭐</div>
-                <div className="stat-info">
-                  <div className="stat-label">Level Progress</div>
-                  <div className="stat-value">
-                    {currentPlayer?.stats.experience || 0} XP
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         </div>

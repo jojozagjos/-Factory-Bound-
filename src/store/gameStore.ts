@@ -13,6 +13,7 @@ import type {
   Enemy,
   Projectile,
   MachineType,
+  GlobalStats,
 } from '../types/game'
 import { ProceduralGenerator } from '../engine/procedural/MapGenerator'
 import { SimulationEngine } from '../engine/simulation/SimulationEngine'
@@ -51,6 +52,9 @@ interface GameState {
   // Progression
   techTree: TechNode[]
   
+  // Global Stats (persists across all saves)
+  globalStats: GlobalStats
+  
   // Game Systems
   simulationEngine: SimulationEngine | null
   buildingSystem: BuildingSystem
@@ -69,11 +73,13 @@ interface GameState {
   isPaused: boolean
   showInventory: boolean
   profilePicture: string
+  profilePictureFile: string | null // Base64 or URL for custom uploaded image
   
   // Actions
   setSession: (session: GameSession) => void
   setPlayer: (player: Player) => void
   setProfilePicture: (avatar: string) => void
+  setProfilePictureFile: (fileData: string | null) => void
   setWorldMap: (map: WorldMap) => void
   addMachine: (machine: Machine) => void
   removeMachine: (id: string) => void
@@ -91,6 +97,9 @@ interface GameState {
   removeFromInventory: (itemName: string, quantity: number) => boolean
   gainExperience: (amount: number) => void
   placeMachine: (machineType: MachineType, position: { x: number; y: number }) => boolean
+  updateGlobalStats: (updates: Partial<GlobalStats>) => void
+  loadGlobalStats: () => void
+  saveGlobalStats: () => void
 }
 
 export const useGameStore = create<GameState>()(
@@ -108,6 +117,33 @@ export const useGameStore = create<GameState>()(
     isPaused: false,
     showInventory: false,
     profilePicture: '👤',
+    profilePictureFile: null,
+    
+    // Global Stats - load from localStorage on init
+    globalStats: (() => {
+      const saved = localStorage.getItem('factory_bound_global_stats')
+      if (saved) {
+        try {
+          return JSON.parse(saved)
+        } catch (e) {
+          console.error('Failed to load global stats:', e)
+        }
+      }
+      return {
+        totalMachinesPlaced: 0,
+        totalMachinesDestroyed: 0,
+        totalResourcesGathered: 0,
+        totalItemsCrafted: 0,
+        totalEnemiesKilled: 0,
+        totalPlaytime: 0,
+        totalGamesPlayed: 0,
+        totalGamesWon: 0,
+        rankedWins: 0,
+        rankedLosses: 0,
+        currentRank: 'Unranked',
+        badges: [],
+      }
+    })(),
     
     // Game Systems
     simulationEngine: null,
@@ -128,6 +164,8 @@ export const useGameStore = create<GameState>()(
     setPlayer: (player) => set({ currentPlayer: player }),
     
     setProfilePicture: (avatar) => set({ profilePicture: avatar }),
+    
+    setProfilePictureFile: (fileData) => set({ profilePictureFile: fileData }),
     
     setWorldMap: (map) => set({ worldMap: map }),
     
@@ -359,6 +397,9 @@ export const useGameStore = create<GameState>()(
       
       set((state) => {
         state.machines.push(newMachine)
+        // Update global stats
+        state.globalStats.totalMachinesPlaced++
+        localStorage.setItem('factory_bound_global_stats', JSON.stringify(state.globalStats))
       })
       
       return true
@@ -440,5 +481,28 @@ export const useGameStore = create<GameState>()(
         player.stats.experience -= xpForNextLevel
       }
     }),
+
+    updateGlobalStats: (updates) => set((state) => {
+      state.globalStats = { ...state.globalStats, ...updates }
+      // Save to localStorage automatically
+      localStorage.setItem('factory_bound_global_stats', JSON.stringify(state.globalStats))
+    }),
+
+    loadGlobalStats: () => {
+      const saved = localStorage.getItem('factory_bound_global_stats')
+      if (saved) {
+        try {
+          const stats = JSON.parse(saved)
+          set({ globalStats: stats })
+        } catch (e) {
+          console.error('Failed to load global stats:', e)
+        }
+      }
+    },
+
+    saveGlobalStats: () => {
+      const state = get()
+      localStorage.setItem('factory_bound_global_stats', JSON.stringify(state.globalStats))
+    },
   }))
 )
