@@ -14,6 +14,7 @@ const KeybindSettings = ({ onClose }: KeybindSettingsProps) => {
   
   const [rebindingAction, setRebindingAction] = useState<string | null>(null)
   const [conflictMessage, setConflictMessage] = useState<string | null>(null)
+  const [showResetConfirm, setShowResetConfirm] = useState(false)
 
   const handleKeyPress = (e: KeyboardEvent) => {
     if (!rebindingAction) return
@@ -59,11 +60,18 @@ const KeybindSettings = ({ onClose }: KeybindSettingsProps) => {
   }
 
   const handleResetDefaults = () => {
-    if (confirm('Reset all keybinds to defaults?')) {
-      resetToDefaults()
-      setRebindingAction(null)
-      setConflictMessage(null)
-    }
+    setShowResetConfirm(true)
+  }
+
+  const confirmReset = () => {
+    resetToDefaults()
+    setRebindingAction(null)
+    setConflictMessage(null)
+    setShowResetConfirm(false)
+  }
+
+  const cancelReset = () => {
+    setShowResetConfirm(false)
   }
 
   // Group keybinds by category
@@ -136,6 +144,24 @@ const KeybindSettings = ({ onClose }: KeybindSettingsProps) => {
             Done
           </button>
         </div>
+
+        {/* Confirmation Dialog */}
+        {showResetConfirm && (
+          <div className="keybind-confirm-overlay">
+            <div className="keybind-confirm-dialog">
+              <h3>Reset Keybinds?</h3>
+              <p>This will reset all keybinds to their default values.</p>
+              <div className="keybind-confirm-buttons">
+                <button className="keybind-btn secondary" onClick={cancelReset}>
+                  Cancel
+                </button>
+                <button className="keybind-btn primary" onClick={confirmReset}>
+                  Reset
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

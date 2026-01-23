@@ -8,7 +8,7 @@ import type { GameSession, GameMode } from '../../types/game'
 import './MainMenu.css'
 
 interface MainMenuProps {
-  onStartGame: (gameMode: GameMode) => void
+  onStartGame: (gameMode: GameMode, worldSeed?: number, worldName?: string) => void
   onStartTutorial: () => void
   onStartMultiplayer?: (session: GameSession) => void
   onLogout?: () => void
@@ -40,9 +40,8 @@ const MainMenu = ({ onStartGame, onStartTutorial, onStartMultiplayer, onLogout }
   }
 
   const handleNewGame = (worldName: string, seed: number, gameMode: GameMode) => {
-    // Store world name for future use (could add to session)
-    console.log('Starting new game:', worldName, 'with seed:', seed)
-    onStartGame(gameMode)
+    // Pass world name and seed to game initialization
+    onStartGame(gameMode, seed, worldName)
     setShowNewGame(false)
   }
 

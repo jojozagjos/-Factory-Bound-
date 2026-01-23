@@ -166,16 +166,21 @@ function App() {
     setGameState('menu')
   }
 
-  const handleStartGame = (gameMode: GameMode) => {
+  const handleStartGame = (gameMode: GameMode, worldSeed?: number, worldName?: string) => {
     // Initialize game with selected mode
     startGame({
       maxPlayers: 1,
       difficulty: 'normal',
       pvpEnabled: false,
       friendlyFire: false,
-      worldSeed: Date.now(),
+      worldSeed: worldSeed || Date.now(),
       modifiers: [],
     }, gameMode)
+    
+    // Store world name if provided (could be used for save file name)
+    if (worldName) {
+      console.log('World name:', worldName)
+    }
     
     setGameState('game')
   }

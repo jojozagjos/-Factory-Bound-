@@ -36,28 +36,30 @@ const NewGameScreen = ({ onStartGame, onCancel }: NewGameScreenProps) => {
     const previewSize = 30
     const tileSize = canvas.width / previewSize
 
-    try {
-      const seedNumber = parseInt(seed) || Date.now()
-      const generator = new ProceduralGenerator(seedNumber)
-      const map = generator.generateMap(previewSize, previewSize, [])
+    // Debounce preview generation
+    const timeoutId = setTimeout(() => {
+      try {
+        const seedNumber = parseInt(seed) || Date.now()
+        const generator = new ProceduralGenerator(seedNumber)
+        const map = generator.generateMap(previewSize, previewSize, [])
 
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-      for (let y = 0; y < previewSize; y++) {
-        for (let x = 0; x < previewSize; x++) {
-          const tile = map.tiles.get(`${x},${y}`)
-          if (!tile) continue
+        for (let y = 0; y < previewSize; y++) {
+          for (let x = 0; x < previewSize; x++) {
+            const tile = map.tiles.get(`${x},${y}`)
+            if (!tile) continue
 
-          let color = '#1a1a1a'
-          switch (tile.type) {
-            case 'water':
-              color = '#2563eb'
-              break
-            case 'grass':
-              color = '#16a34a'
-              break
-            case 'stone':
-              color = '#71717a'
+            let color = '#1a1a1a'
+            switch (tile.type) {
+              case 'water':
+                color = '#2563eb'
+                break
+              case 'grass':
+                color = '#16a34a'
+                break
+              case 'stone':
+                color = '#71717a'
               break
             case 'sand':
               color = '#eab308'
@@ -82,15 +84,18 @@ const NewGameScreen = ({ onStartGame, onCancel }: NewGameScreenProps) => {
           }
         }
       }
-    } catch (error) {
-      console.error('Error generating preview:', error)
-      ctx.fillStyle = '#1a1a1a'
-      ctx.fillRect(0, 0, canvas.width, canvas.height)
-      ctx.fillStyle = 'white'
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      ctx.fillText('Preview unavailable', canvas.width / 2, canvas.height / 2)
-    }
+      } catch (error) {
+        console.error('Error generating preview:', error)
+        ctx.fillStyle = '#1a1a1a'
+        ctx.fillRect(0, 0, canvas.width, canvas.height)
+        ctx.fillStyle = 'white'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText('Preview unavailable', canvas.width / 2, canvas.height / 2)
+      }
+    }, 300) // Debounce delay: 300ms
+
+    return () => clearTimeout(timeoutId)
   }, [seed])
 
   const handleStart = () => {
