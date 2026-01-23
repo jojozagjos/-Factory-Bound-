@@ -22,7 +22,7 @@ const SaveManager = ({ onClose, mode }: SaveManagerProps) => {
 
   const loadSaveSlots = () => {
     const slots: SaveSlot[] = []
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 3; i++) {  // Changed from 5 to 3
       const slotKey = `factory_bound_save_${i}`
       const savedData = localStorage.getItem(slotKey)
       if (savedData) {

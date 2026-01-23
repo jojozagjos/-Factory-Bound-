@@ -638,3 +638,15 @@
     transform: none;
   }
 }
+
+/* Guest player notice */
+.guest-notice {
+  background: rgba(255, 165, 0, 0.15);
+  border: 1px solid rgba(255, 165, 0, 0.4);
+  border-radius: 6px;
+  padding: 12px;
+  margin: 8px 0;
+  color: #ffa500;
+  font-size: 0.9rem;
+  text-align: center;
+}

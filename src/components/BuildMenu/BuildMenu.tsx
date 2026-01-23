@@ -50,6 +50,7 @@ const BuildMenu = ({ onClose, onSelectBuilding }: BuildMenuProps) => {
     assembler: '⚙️',
     power_plant: '⚡',
     turret: '🔫',
+    base: '🏭',
   }
 
   const buildingNames: Record<MachineType, string> = {
@@ -61,6 +62,7 @@ const BuildMenu = ({ onClose, onSelectBuilding }: BuildMenuProps) => {
     assembler: 'Assembler',
     power_plant: 'Power Plant',
     turret: 'Gun Turret',
+    base: 'Base',
   }
 
   const currentCategory = categories.find(c => c.name === selectedCategory)

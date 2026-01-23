@@ -15,6 +15,7 @@ import KeyboardHelp from './components/KeyboardHelp/KeyboardHelp'
 import AchievementNotification from './components/AchievementNotification/AchievementNotification'
 import ParticleSystem, { type Particle } from './components/ParticleSystem/ParticleSystem'
 import Tooltips, { useTooltips } from './components/Tooltips/Tooltips'
+import UnlockProgress from './components/UnlockProgress/UnlockProgress'
 import { useTutorialStore } from './store/tutorialStore'
 import { useGameStore } from './store/gameStore'
 import { useAutoSave } from './hooks/useAutoSave'
@@ -58,6 +59,14 @@ function App() {
 
   // Enable auto-save when in game
   useAutoSave(gameState === 'game')
+
+  // Load profile picture from localStorage on mount
+  useEffect(() => {
+    const savedPicture = localStorage.getItem('factory_bound_profile_picture')
+    if (savedPicture) {
+      useGameStore.getState().setProfilePictureFile(savedPicture)
+    }
+  }, [])
 
   // Listen for tutorial completion
   useEffect(() => {
@@ -166,23 +175,35 @@ function App() {
     setGameState('menu')
   }
 
-  const handleStartGame = (gameMode: GameMode, worldSeed?: number, worldName?: string) => {
-    // Initialize game with selected mode
+  const handleStartGame = (settings: {
+    worldName: string
+    seed: number
+    gameMode: GameMode
+    enemiesEnabled: boolean
+    enemyFactoriesEnabled: boolean
+    oceanEnemiesEnabled: boolean
+    maxEnemyBases: number
+    difficulty: 'easy' | 'normal' | 'hard' | 'nightmare'
+  }) => {
+    // Initialize game with all settings
     startGame({
       maxPlayers: 1,
-      difficulty: 'normal',
+      difficulty: settings.difficulty,
       pvpEnabled: false,
       friendlyFire: false,
-      worldSeed: worldSeed || Date.now(),
+      worldSeed: settings.seed,
       modifiers: [],
-    }, gameMode)
+      enemiesEnabled: settings.enemiesEnabled,
+      enemyFactoriesEnabled: settings.enemyFactoriesEnabled,
+      oceanEnemiesEnabled: settings.oceanEnemiesEnabled,
+      maxEnemyBases: settings.maxEnemyBases,
+      gameMode: 'automation',
+    }, settings.gameMode)
     
-    // Store world name if provided (could be used for save file name)
-    if (worldName) {
-      console.log('World name:', worldName)
-    }
+    console.log('World name:', settings.worldName)
     
     setGameState('game')
+    // TODO: Implement audioSystem.playBackgroundMusic() - audio system pending
   }
 
   const handleStartTutorial = () => {
@@ -194,6 +215,11 @@ function App() {
       friendlyFire: false,
       worldSeed: 12345, // Fixed seed for consistent tutorial experience
       modifiers: [],
+      enemiesEnabled: false,
+      enemyFactoriesEnabled: false,
+      oceanEnemiesEnabled: false,
+      maxEnemyBases: 5,
+      gameMode: 'automation',
     }, GameMode.CUSTOM)
     
     setGameState('game')
@@ -297,6 +323,7 @@ function App() {
             onLoad={() => handleOpenSaveManager('load')}
             inTutorial={isInTutorial}
           />
+          <UnlockProgress />
           {showNodeEditor && (
             <NodeEditor onClose={() => setShowNodeEditor(false)} />
           )}

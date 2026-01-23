@@ -167,22 +167,27 @@ const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree
           )}
           {!inTutorial && (
             <>
-              <button 
-                className="control-btn"
-                onClick={onSave}
-                aria-label="Save game"
-                title="Save game"
-              >
-                💾
-              </button>
-              <button 
-                className="control-btn"
-                onClick={onLoad}
-                aria-label="Load game"
-                title="Load game"
-              >
-                📁
-              </button>
+              {/* Hide save/load buttons for guest players */}
+              {!currentPlayer?.isGuest && (
+                <>
+                  <button 
+                    className="control-btn"
+                    onClick={onSave}
+                    aria-label="Save game"
+                    title="Save game"
+                  >
+                    💾
+                  </button>
+                  <button 
+                    className="control-btn"
+                    onClick={onLoad}
+                    aria-label="Load game"
+                    title="Load game"
+                  >
+                    📁
+                  </button>
+                </>
+              )}
               <button 
                 className={`control-btn ${isPaused ? 'active' : ''}`}
                 onClick={handlePauseToggle}
@@ -382,12 +387,23 @@ const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree
                 >
                   Settings
                 </button>
-                <button 
-                  className="menu-btn" 
-                  onClick={onSave}
-                >
-                  Save Game
-                </button>
+                
+                {/* Hide save button for guest players */}
+                {!currentPlayer?.isGuest && (
+                  <button 
+                    className="menu-btn" 
+                    onClick={onSave}
+                  >
+                    Save Game
+                  </button>
+                )}
+                
+                {currentPlayer?.isGuest && (
+                  <div className="guest-notice">
+                    ⚠️ Guest players cannot save games
+                  </div>
+                )}
+                
                 <button 
                   className="menu-btn danger" 
                   onClick={handleReturnToMenu}

@@ -4,6 +4,9 @@ import CameraControls, { type CameraState } from '../CameraControls/CameraContro
 import type { MachineType } from '../../types/game'
 import './GameCanvas.css'
 
+const BASE_ICON = '🏭'
+const BASE_ICON_FONT_SIZE = 24
+
 const GameCanvas = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const machines = useGameStore(state => state.machines)
@@ -18,8 +21,8 @@ const GameCanvas = () => {
   const [camera, setCamera] = useState<CameraState>(() => {
     // Calculate world center - will be updated when worldMap loads
     const gridSize = 50
-    const worldWidth = 100 // Default world size
-    const worldHeight = 100
+    const worldWidth = 200 // Increased default world size
+    const worldHeight = 200
     return {
       x: (worldWidth * gridSize) / 2,
       y: (worldHeight * gridSize) / 2,
@@ -261,12 +264,48 @@ const GameCanvas = () => {
           case 'storage':
             color = '#fbbf24'
             break
+          case 'base':
+            color = '#10b981' // Green for base
+            break
           default:
             color = '#4a9eff'
         }
 
-        ctx.fillStyle = color
-        ctx.fillRect(-gridSize / 2 + 5, -gridSize / 2 + 5, gridSize - 10, gridSize - 10)
+        // Special rendering for base
+        if (machine.type === 'base') {
+          // Draw larger base structure (3x3 tiles)
+          ctx.fillStyle = color
+          ctx.fillRect(-gridSize * 1.5 + 5, -gridSize * 1.5 + 5, gridSize * 3 - 10, gridSize * 3 - 10)
+          
+          // Draw border
+          ctx.strokeStyle = '#22c55e'
+          ctx.lineWidth = 4
+          ctx.strokeRect(-gridSize * 1.5 + 5, -gridSize * 1.5 + 5, gridSize * 3 - 10, gridSize * 3 - 10)
+          
+          // Draw entrances as smaller colored squares
+          if (machine.baseEntrances) {
+            machine.baseEntrances.forEach(entrance => {
+              const relX = (entrance.x - machine.position.x) * gridSize
+              const relY = (entrance.y - machine.position.y) * gridSize
+              ctx.fillStyle = '#fbbf24'
+              ctx.fillRect(relX - 10, relY - 10, 20, 20)
+              ctx.strokeStyle = '#fff'
+              ctx.lineWidth = 2
+              ctx.strokeRect(relX - 10, relY - 10, 20, 20)
+            })
+          }
+          
+          // Draw base icon/text
+          ctx.fillStyle = '#fff'
+          ctx.font = `${BASE_ICON_FONT_SIZE}px Arial`
+          ctx.textAlign = 'center'
+          ctx.textBaseline = 'middle'
+          ctx.fillText(BASE_ICON, 0, 0)
+        } else {
+          // Normal machine rendering
+          ctx.fillStyle = color
+          ctx.fillRect(-gridSize / 2 + 5, -gridSize / 2 + 5, gridSize - 10, gridSize - 10)
+        }
 
         // Draw health bar
         const healthPercent = machine.health / machine.maxHealth
@@ -361,10 +400,12 @@ const GameCanvas = () => {
     const x = e.clientX - rect.left
     const y = e.clientY - rect.top
 
-    // Convert screen coords to grid coords
+    // Convert screen coords to world coords, accounting for camera
     const gridSize = 50
-    const gridX = Math.floor((x - canvas.width / 2) / gridSize)
-    const gridY = Math.floor((y - canvas.height / 2) / gridSize)
+    const worldX = (x - canvas.width / 2) / camera.zoom + camera.x
+    const worldY = (y - canvas.height / 2) / camera.zoom + camera.y
+    const gridX = Math.floor(worldX / gridSize)
+    const gridY = Math.floor(worldY / gridSize)
 
     // If in building mode, place machine
     if (buildingMode) {
@@ -394,9 +435,12 @@ const GameCanvas = () => {
     const x = e.clientX - rect.left
     const y = e.clientY - rect.top
 
+    // Convert screen coords to world coords, accounting for camera
     const gridSize = 50
-    const gridX = Math.floor((x - canvas.width / 2) / gridSize)
-    const gridY = Math.floor((y - canvas.height / 2) / gridSize)
+    const worldX = (x - canvas.width / 2) / camera.zoom + camera.x
+    const worldY = (y - canvas.height / 2) / camera.zoom + camera.y
+    const gridX = Math.floor(worldX / gridSize)
+    const gridY = Math.floor(worldY / gridSize)
 
     setGhostPosition({ x: gridX, y: gridY })
   }

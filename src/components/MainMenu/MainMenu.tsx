@@ -39,9 +39,18 @@ const MainMenu = ({ onStartGame, onStartTutorial, onStartMultiplayer, onLogout }
     setShowMultiplayer(false)
   }
 
-  const handleNewGame = (worldName: string, seed: number, gameMode: GameMode) => {
-    // Pass world name and seed to game initialization
-    onStartGame(gameMode, seed, worldName)
+  const handleNewGame = (settings: {
+    worldName: string
+    seed: number
+    gameMode: GameMode
+    enemiesEnabled: boolean
+    enemyFactoriesEnabled: boolean
+    oceanEnemiesEnabled: boolean
+    maxEnemyBases: number
+    difficulty: 'easy' | 'normal' | 'hard' | 'nightmare'
+  }) => {
+    // Pass settings to game initialization
+    onStartGame(settings.gameMode, settings.seed, settings.worldName)
     setShowNewGame(false)
   }
 
@@ -114,13 +123,18 @@ const MainMenu = ({ onStartGame, onStartTutorial, onStartMultiplayer, onLogout }
             >
               📚 Tutorial
             </button>
-            <button 
-              className="menu-button"
-              onClick={() => setShowProfile(true)}
-              aria-label="Open Profile"
-            >
-              👤 Profile
-            </button>
+            
+            {/* Hide profile for guest players */}
+            {!isGuest && (
+              <button 
+                className="menu-button"
+                onClick={() => setShowProfile(true)}
+                aria-label="Open Profile"
+              >
+                👤 Profile
+              </button>
+            )}
+            
             <button 
               className="menu-button"
               onClick={() => setShowSettings(true)}

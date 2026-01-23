@@ -19,6 +19,7 @@ export enum MachineType {
   POWER_PLANT = 'power_plant',
   TURRET = 'turret',
   STORAGE = 'storage',
+  BASE = 'base', // Player's main base
 }
 
 export interface Machine {
@@ -32,6 +33,8 @@ export interface Machine {
   health: number
   maxHealth: number
   nodeProgram?: NodeProgram
+  isBase?: boolean // Flag for starting base
+  baseEntrances?: Position[] // For base type, absolute grid coordinates of 4 entrances
 }
 
 // Item and Recipe types
@@ -119,6 +122,8 @@ export interface Player {
   maxHealth: number
   team?: string
   stats: PlayerStats
+  isGuest?: boolean // True for multiplayer guests (limited permissions)
+  isHost?: boolean // True for lobby host
 }
 
 export interface PlayerStats {
@@ -127,6 +132,46 @@ export interface PlayerStats {
   prestigeLevel: number
   unlockedTech: string[]
   completedResearch: string[]
+}
+
+// Global statistics that persist across all saves
+export interface GlobalStats {
+  totalMachinesPlaced: number
+  totalMachinesDestroyed: number
+  totalResourcesGathered: number
+  totalItemsCrafted: number
+  totalEnemiesKilled: number
+  totalPlaytime: number // in seconds
+  totalGamesPlayed: number
+  totalGamesWon: number
+  rankedWins: number
+  rankedLosses: number
+  currentRank: string
+  badges: Badge[]
+}
+
+export interface Badge {
+  id: string
+  name: string
+  description: string
+  icon: string
+  unlockedAt: number
+  rarity: 'common' | 'rare' | 'epic' | 'legendary'
+}
+
+// Machine unlock system (Builderment-style)
+export interface MachineUnlock {
+  machineType: MachineType
+  requiredDeliveries: Item[] // Resources that must be delivered to base to unlock
+  unlocked: boolean
+  order: number // Unlock order/tier
+}
+
+// Base resource delivery tracking
+export interface ResourceDelivery {
+  itemName: string
+  quantityDelivered: number
+  quantityRequired: number
 }
 
 // Tech Tree
@@ -166,6 +211,12 @@ export interface GameSettings {
   friendlyFire: boolean
   worldSeed: number
   modifiers: WorldModifier[]
+  // New Builderment-style settings
+  enemiesEnabled: boolean
+  enemyFactoriesEnabled: boolean
+  oceanEnemiesEnabled: boolean
+  maxEnemyBases: number
+  gameMode: 'automation' | 'coop' | 'pvp' | 'ranked'
 }
 
 // Save system
@@ -197,6 +248,18 @@ export interface Enemy {
   health: number
   maxHealth: number
   target?: string
+  spawnedFrom?: string // ID of enemy factory that spawned this enemy
+}
+
+// Enemy factory/base system
+export interface EnemyFactory {
+  id: string
+  position: Position
+  health: number
+  maxHealth: number
+  spawnRate: number // Enemies per minute
+  lastSpawnTime: number
+  isOceanBase: boolean // Spawned from ocean
 }
 
 // Ranking and Prestige

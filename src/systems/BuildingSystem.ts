@@ -78,6 +78,10 @@ export class BuildingSystem {
           { id: 'iron_plate', name: 'iron_plate', quantity: 20 },
         ],
       },
+      {
+        machineType: 'base' as MachineType,
+        costs: [], // Base is placed automatically at game start
+      },
     ]
 
     costs.forEach(cost => {
@@ -202,6 +206,7 @@ export class BuildingSystem {
       power_plant: 300,
       turret: 400,
       storage: 250,
+      base: 1000, // Base has high health
     }
     return healthMap[machineType] || 100
   }
@@ -219,6 +224,7 @@ export class BuildingSystem {
       power_plant: -200, // Negative means it produces power
       turret: 40,
       storage: 5,
+      base: 0, // Base doesn't require power
     }
     return powerMap[machineType] || 0
   }
@@ -260,6 +266,83 @@ export class BuildingSystem {
    */
   rotateBuilding(currentRotation: number): number {
     return (currentRotation + 90) % 360
+  }
+
+  /**
+   * Create the starting base with 4 entrances (Builderment-style)
+   */
+  createStartingBase(centerPosition: Position): Machine {
+    const BASE_ENTRANCE_OFFSET = 2 // Distance of entrances from base center
+    
+    const base: Machine = {
+      id: `base_${Date.now()}`,
+      type: 'base' as MachineType,
+      position: centerPosition,
+      rotation: 0,
+      inventory: [],
+      power: {
+        required: 0,
+        available: 0,
+        connected: true,
+      },
+      health: 1000,
+      maxHealth: 1000,
+      isBase: true,
+      // 4 entrances: top, right, bottom, left (absolute grid coordinates)
+      baseEntrances: [
+        { x: centerPosition.x, y: centerPosition.y - BASE_ENTRANCE_OFFSET }, // Top
+        { x: centerPosition.x + BASE_ENTRANCE_OFFSET, y: centerPosition.y }, // Right
+        { x: centerPosition.x, y: centerPosition.y + BASE_ENTRANCE_OFFSET }, // Bottom
+        { x: centerPosition.x - BASE_ENTRANCE_OFFSET, y: centerPosition.y }, // Left
+      ],
+    }
+    return base
+  }
+
+  /**
+   * Create multiple bases for PVP mode (2-4 players)
+   * Bases are auto-placed at strategic positions on the map
+   * @param mapWidth Width of the map
+   * @param mapHeight Height of the map
+   * @param playerCount Number of players (2-4)
+   * @returns Array of base machines
+   */
+  createPVPBases(mapWidth: number, mapHeight: number, playerCount: number): Machine[] {
+    if (playerCount < 2 || playerCount > 4) {
+      throw new Error('PVP requires 2-4 players')
+    }
+
+    const bases: Machine[] = []
+    const margin = 20 // Distance from map edge
+    
+    // Define base positions for different player counts
+    const basePositions: Record<number, Position[]> = {
+      2: [
+        { x: margin, y: margin }, // Top-left
+        { x: mapWidth - margin, y: mapHeight - margin }, // Bottom-right
+      ],
+      3: [
+        { x: margin, y: margin }, // Top-left
+        { x: mapWidth - margin, y: margin }, // Top-right
+        { x: Math.floor(mapWidth / 2), y: mapHeight - margin }, // Bottom-center
+      ],
+      4: [
+        { x: margin, y: margin }, // Top-left
+        { x: mapWidth - margin, y: margin }, // Top-right
+        { x: margin, y: mapHeight - margin }, // Bottom-left
+        { x: mapWidth - margin, y: mapHeight - margin }, // Bottom-right
+      ],
+    }
+
+    const positions = basePositions[playerCount]
+    
+    positions.forEach((position, index) => {
+      const base = this.createStartingBase(position)
+      base.id = `base_player${index + 1}_${Date.now()}`
+      bases.push(base)
+    })
+
+    return bases
   }
 
   /**

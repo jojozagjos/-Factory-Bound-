@@ -1,0 +1,84 @@
+import { useGameStore } from '../../store/gameStore'
+import './UnlockProgress.css'
+
+const UnlockProgress = () => {
+  const machineUnlocks = useGameStore(state => state.machineUnlocks)
+  const resourceDeliveries = useGameStore(state => state.resourceDeliveries)
+
+  // Show only locked machines
+  const lockedMachines = machineUnlocks.filter(u => !u.unlocked && u.requiredDeliveries.length > 0)
+
+  if (lockedMachines.length === 0) {
+    return null // All machines unlocked or nothing to show
+  }
+
+  // Sort by order/tier
+  const sorted = [...lockedMachines].sort((a, b) => a.order - b.order)
+
+  // Get machine icons/names
+  const machineIcons: Record<string, string> = {
+    miner: '⛏️',
+    smelter: '🔥',
+    assembler: '⚙️',
+    storage: '📦',
+    power_plant: '⚡',
+    turret: '🔫',
+  }
+
+  const machineNames: Record<string, string> = {
+    miner: 'Mining Drill',
+    smelter: 'Furnace',
+    assembler: 'Assembler',
+    storage: 'Storage Chest',
+    power_plant: 'Power Plant',
+    turret: 'Gun Turret',
+  }
+
+  return (
+    <div className="unlock-progress">
+      <div className="unlock-header">
+        <h3>🔒 Unlock Progress</h3>
+      </div>
+      <div className="unlock-list">
+        {sorted.slice(0, 3).map(unlock => { // Show next 3 unlocks
+          const icon = machineIcons[unlock.machineType] || '❓'
+          const name = machineNames[unlock.machineType] || unlock.machineType
+
+          return (
+            <div key={unlock.machineType} className="unlock-item">
+              <div className="unlock-machine">
+                <span className="unlock-icon">{icon}</span>
+                <span className="unlock-name">{name}</span>
+              </div>
+              <div className="unlock-requirements">
+                {unlock.requiredDeliveries.map(required => {
+                  const delivery = resourceDeliveries.find(d => d.itemName === required.name)
+                  const delivered = delivery?.quantityDelivered || 0
+                  const percentage = Math.min(100, (delivered / required.quantity) * 100)
+                  const isMet = delivered >= required.quantity
+
+                  return (
+                    <div key={required.name} className="requirement-item">
+                      <div className="requirement-text">
+                        <span className={isMet ? 'met' : ''}>{required.name}</span>
+                        <span className={isMet ? 'met' : ''}>{delivered}/{required.quantity}</span>
+                      </div>
+                      <div className="requirement-bar">
+                        <div 
+                          className={`requirement-fill ${isMet ? 'complete' : ''}`}
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+export default UnlockProgress
