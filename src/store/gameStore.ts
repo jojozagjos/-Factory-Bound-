@@ -275,9 +275,9 @@ export const useGameStore = create<GameState>()(
         }
       }
 
-      // Generate world map
+      // Generate world map (increased size from 100x100 to 200x200 for Builderment-style gameplay)
       const generator = new ProceduralGenerator(settings.worldSeed || Date.now())
-      state.worldMap = generator.generateMap(100, 100, settings.modifiers || [])
+      state.worldMap = generator.generateMap(200, 200, settings.modifiers || [])
       
       // Place starting base in center of map (Builderment-style)
       const centerX = Math.floor(state.worldMap.width / 2)

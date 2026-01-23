@@ -18,8 +18,8 @@ const GameCanvas = () => {
   const [camera, setCamera] = useState<CameraState>(() => {
     // Calculate world center - will be updated when worldMap loads
     const gridSize = 50
-    const worldWidth = 100 // Default world size
-    const worldHeight = 100
+    const worldWidth = 200 // Increased default world size
+    const worldHeight = 200
     return {
       x: (worldWidth * gridSize) / 2,
       y: (worldHeight * gridSize) / 2,
