@@ -361,10 +361,12 @@ const GameCanvas = () => {
     const x = e.clientX - rect.left
     const y = e.clientY - rect.top
 
-    // Convert screen coords to grid coords
+    // Convert screen coords to world coords, accounting for camera
     const gridSize = 50
-    const gridX = Math.floor((x - canvas.width / 2) / gridSize)
-    const gridY = Math.floor((y - canvas.height / 2) / gridSize)
+    const worldX = (x - canvas.width / 2) / camera.zoom + camera.x
+    const worldY = (y - canvas.height / 2) / camera.zoom + camera.y
+    const gridX = Math.floor(worldX / gridSize)
+    const gridY = Math.floor(worldY / gridSize)
 
     // If in building mode, place machine
     if (buildingMode) {
@@ -394,9 +396,12 @@ const GameCanvas = () => {
     const x = e.clientX - rect.left
     const y = e.clientY - rect.top
 
+    // Convert screen coords to world coords, accounting for camera
     const gridSize = 50
-    const gridX = Math.floor((x - canvas.width / 2) / gridSize)
-    const gridY = Math.floor((y - canvas.height / 2) / gridSize)
+    const worldX = (x - canvas.width / 2) / camera.zoom + camera.x
+    const worldY = (y - canvas.height / 2) / camera.zoom + camera.y
+    const gridX = Math.floor(worldX / gridSize)
+    const gridY = Math.floor(worldY / gridSize)
 
     setGhostPosition({ x: gridX, y: gridY })
   }
