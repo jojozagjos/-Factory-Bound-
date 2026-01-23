@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useTutorialStore } from '../../store/tutorialStore'
+import { tutorialSteps } from './tutorialSteps'
 import './Tutorial.css'
 
 const Tutorial = () => {
@@ -13,7 +14,7 @@ const Tutorial = () => {
   const overlayRef = useRef<HTMLDivElement>(null)
 
   const handleNextStep = () => {
-    const totalSteps = 16
+    const totalSteps = tutorialSteps.length
     if (currentStepIndex === totalSteps - 1) {
       // Last step - complete tutorial
       completeTutorial()
@@ -101,14 +102,28 @@ const Tutorial = () => {
               break
           }
           
-          // Clamp to viewport bounds
-          if (transform.includes('-50%')) {
-            left = Math.max(boxWidth / 2, Math.min(viewportWidth - boxWidth / 2, left))
+          // Resolve percentage translate to pixel coordinates and clamp to viewport
+          const percentMatch = transform.match(/translate\((-?\d+(?:\.\d+)?)%?,\s*(-?\d+(?:\.\d+)?)%?\)/)
+          let resolvedLeft = left
+          let resolvedTop = top
+
+          if (percentMatch) {
+            const xPercent = parseFloat(percentMatch[1])
+            const yPercent = parseFloat(percentMatch[2])
+
+            resolvedLeft = left + (xPercent / 100) * boxWidth
+            resolvedTop = top + (yPercent / 100) * boxHeight
           }
-          
-          tutorialBox.style.left = `${left}px`
-          tutorialBox.style.top = `${top}px`
-          tutorialBox.style.transform = transform
+
+          // Ensure the box stays fully on screen with small padding
+          const paddingClamp = 8
+          resolvedLeft = Math.max(paddingClamp, Math.min(viewportWidth - boxWidth - paddingClamp, resolvedLeft))
+          resolvedTop = Math.max(paddingClamp, Math.min(viewportHeight - boxHeight - paddingClamp, resolvedTop))
+
+          tutorialBox.style.left = `${resolvedLeft}px`
+          tutorialBox.style.top = `${resolvedTop}px`
+          // We've baked the translation into pixel coords, so reset transform
+          tutorialBox.style.transform = 'none'
         }
 
         // Add highlight effect to target
@@ -123,10 +138,10 @@ const Tutorial = () => {
 
   if (!isActive || !currentStep) return null
 
-  const totalSteps = 16 // Total number of tutorial steps
+  const totalSteps = tutorialSteps.length // Total number of tutorial steps
   
-  // Don't show backdrop for camera controls step to allow interaction
-  const showBackdrop = currentStep.id !== 'camera_controls'
+  // Don't show backdrop when step allows direct interaction (camera controls or has a target)
+  const showBackdrop = currentStep.id !== 'camera_controls' && !currentStep.target
 
   return (
     <div className="tutorial-overlay" ref={overlayRef}>

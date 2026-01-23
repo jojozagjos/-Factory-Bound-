@@ -8,7 +8,16 @@ import type { GameSession, GameMode } from '../../types/game'
 import './MainMenu.css'
 
 interface MainMenuProps {
-  onStartGame: (gameMode: GameMode, worldSeed?: number, worldName?: string) => void
+  onStartGame: (settings: {
+    worldName: string
+    seed: number
+    gameMode: GameMode
+    enemiesEnabled: boolean
+    enemyFactoriesEnabled: boolean
+    oceanEnemiesEnabled: boolean
+    maxEnemyBases: number
+    difficulty: 'easy' | 'normal' | 'hard' | 'nightmare'
+  }) => void
   onStartTutorial: () => void
   onStartMultiplayer?: (session: GameSession) => void
   onLogout?: () => void
@@ -49,8 +58,8 @@ const MainMenu = ({ onStartGame, onStartTutorial, onStartMultiplayer, onLogout }
     maxEnemyBases: number
     difficulty: 'easy' | 'normal' | 'hard' | 'nightmare'
   }) => {
-    // Pass settings to game initialization
-    onStartGame(settings.gameMode, settings.seed, settings.worldName)
+    // Pass settings object to game initialization
+    onStartGame(settings)
     setShowNewGame(false)
   }
 

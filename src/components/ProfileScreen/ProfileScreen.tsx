@@ -1,5 +1,6 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useGameStore } from '../../store/gameStore'
+import { achievementSystem, type Achievement } from '../../systems/AchievementSystem/AchievementSystem'
 import './ProfileScreen.css'
 
 interface ProfileScreenProps {
@@ -16,6 +17,7 @@ const ProfileScreen = ({ onClose }: ProfileScreenProps) => {
   const globalStats = useGameStore(state => state.globalStats)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [uploadError, setUploadError] = useState<string>('')
+  const [achievements, setAchievements] = useState<Achievement[]>([])
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -46,6 +48,27 @@ const ProfileScreen = ({ onClose }: ProfileScreenProps) => {
     }
     reader.readAsDataURL(file)
   }
+
+  // Load achievements and subscribe to updates
+  useEffect(() => {
+    achievementSystem.load()
+    setAchievements(achievementSystem.getAll())
+
+    const unsub = achievementSystem.subscribe(() => {
+      setAchievements(achievementSystem.getAll())
+    })
+
+    // Close on Escape
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', handleKey)
+
+    return () => {
+      unsub()
+      window.removeEventListener('keydown', handleKey)
+    }
+  }, [onClose])
 
   const handleRemoveImage = () => {
     setProfilePictureFile(null)
@@ -80,7 +103,12 @@ const ProfileScreen = ({ onClose }: ProfileScreenProps) => {
       <div className="profile-screen" onClick={(e) => e.stopPropagation()}>
         <div className="profile-header">
           <h1>👤 Player Profile</h1>
-          <button className="profile-close-btn" onClick={onClose} aria-label="Close">
+          <button
+            type="button"
+            className="profile-close-btn"
+            onClick={(e) => { e.stopPropagation(); onClose() }}
+            aria-label="Close"
+          >
             ✕
           </button>
         </div>
@@ -247,6 +275,40 @@ const ProfileScreen = ({ onClose }: ProfileScreenProps) => {
                 <p className="no-badges">
                   🎯 Play ranked matches to earn badges!
                 </p>
+              )}
+            </div>
+          </div>
+
+          {/* Achievements Section */}
+          <div className="profile-section">
+            <h2>🏆 Achievements</h2>
+            <p className="stats-description">Unlocked achievements and progress</p>
+            <div className="achievements-grid">
+              {achievements.length === 0 ? (
+                <p className="no-achievements">No achievements available.</p>
+              ) : (
+                achievements.map((ach) => (
+                  <div key={ach.id} className={`achievement-item ${ach.unlocked ? 'unlocked' : 'locked'}`}>
+                    <div className="achievement-icon">{ach.icon}</div>
+                    <div className="achievement-body">
+                      <div className="achievement-name">{ach.name}</div>
+                      <div className="achievement-desc">{ach.description}</div>
+                      {ach.maxProgress ? (
+                        <div className="achievement-progress">
+                          <div className="progress-bar">
+                            <div
+                              className="progress-fill"
+                              style={{ width: `${Math.min(100, ((ach.progress || 0) / ach.maxProgress) * 100)}%` }}
+                            />
+                          </div>
+                          <div className="progress-text">{ach.progress || 0}/{ach.maxProgress}</div>
+                        </div>
+                      ) : ach.unlocked ? (
+                        <div className="achievement-unlocked-date">Unlocked: {ach.unlockedAt ? new Date(ach.unlockedAt).toLocaleDateString() : ''}</div>
+                      ) : null}
+                    </div>
+                  </div>
+                ))
               )}
             </div>
           </div>

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useEffect } from 'react'
 import { useKeybindStore } from '../../store/keybindStore'
 import './KeybindSettings.css'
 
@@ -77,14 +78,21 @@ const KeybindSettings = ({ onClose }: KeybindSettingsProps) => {
   // Group keybinds by category
   const categories = Array.from(new Set(keybinds.map(kb => kb.category)))
 
+  // Close on Escape key
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
   return (
     <div className="keybind-settings-overlay" onClick={onClose}>
       <div className="keybind-settings" onClick={(e) => e.stopPropagation()}>
         <div className="keybind-header">
           <h1>⌨️ Keybind Settings</h1>
-          <button className="keybind-close-btn" onClick={onClose} aria-label="Close">
-            ✕
-          </button>
+          {/* Close button removed — use overlay click, Escape, or Done button to close */}
         </div>
 
         <div className="keybind-content">

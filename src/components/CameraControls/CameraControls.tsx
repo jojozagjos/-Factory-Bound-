@@ -123,8 +123,11 @@ const CameraControls = ({ camera, onCameraChange, canvasRef, worldBounds }: Came
           onCameraChange(newCamera)
           break
         case '0':
-          // Reset camera
-          onCameraChange({ x: 0, y: 0, zoom: 1 })
+          // Reset camera: if worldBounds provided, center on world; otherwise reset to origin
+          const gridSize = 50
+          const centerX = worldBounds ? (worldBounds.width * gridSize) / 2 : 0
+          const centerY = worldBounds ? (worldBounds.height * gridSize) / 2 : 0
+          onCameraChange({ x: centerX, y: centerY, zoom: 1 })
           break
       }
     }

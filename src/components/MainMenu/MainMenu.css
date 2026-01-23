@@ -36,7 +36,7 @@
 }
 
 .game-title {
-  font-size: 5rem;
+  font-size: 3rem;
   font-weight: 900;
   margin: 0 0 0.5rem 0;
   background: linear-gradient(135deg, #4a9eff 0%, #4ade80 50%, #fbbf24 100%);
@@ -61,10 +61,10 @@
 }
 
 .game-subtitle {
-  font-size: 1.4rem;
+  font-size: 1rem;
   color: rgba(255, 255, 255, 0.7);
   margin: 0 0 3rem 0;
-  letter-spacing: 4px;
+  letter-spacing: 2px;
   text-transform: uppercase;
   font-weight: 300;
   animation: subtitleFade 2s ease-in-out infinite;

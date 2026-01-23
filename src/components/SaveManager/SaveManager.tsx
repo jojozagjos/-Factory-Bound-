@@ -67,6 +67,11 @@ const SaveManager = ({ onClose, mode }: SaveManagerProps) => {
               friendlyFire: false,
               worldSeed: 0,
               modifiers: [],
+                enemiesEnabled: false,
+                enemyFactoriesEnabled: false,
+                oceanEnemiesEnabled: false,
+                maxEnemyBases: 5,
+                gameMode: 'automation',
             },
           },
         })

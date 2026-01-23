@@ -29,6 +29,11 @@ const MultiplayerLobby = ({ mode, isPvP, onStartGame, onCancel }: MultiplayerLob
     friendlyFire: false,
     worldSeed: Date.now(),
     modifiers: [],
+    enemiesEnabled: false,
+    enemyFactoriesEnabled: false,
+    oceanEnemiesEnabled: false,
+    maxEnemyBases: 5,
+    gameMode: isPvP ? 'pvp' : 'coop',
   })
 
   useEffect(() => {

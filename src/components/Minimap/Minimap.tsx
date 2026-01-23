@@ -96,8 +96,9 @@ const Minimap = ({ width = 200, height = 200 }: MinimapProps) => {
     const minY = Math.min(...tiles.map(t => t.y))
     const maxY = Math.max(...tiles.map(t => t.y))
 
-    const mapWidth = maxX - minX
-    const mapHeight = maxY - minY
+    // Include inclusive tile extents (+1) so edges render correctly
+    const mapWidth = maxX - minX + 1
+    const mapHeight = maxY - minY + 1
     const baseScale = Math.min(width / mapWidth, height / mapHeight) * 0.9
     const scale = baseScale * mapZoom
 
@@ -108,11 +109,36 @@ const Minimap = ({ width = 200, height = 200 }: MinimapProps) => {
     const toMinimapX = (x: number) => (x - minX) * scale + offsetX
     const toMinimapY = (y: number) => (y - minY) * scale + offsetY
 
-    // Draw simplified terrain
-    ctx.fillStyle = '#2a2a2a'
-    ctx.fillRect(offsetX, offsetY, mapWidth * scale, mapHeight * scale)
+    // Draw terrain per-tile so the minimap better reflects the world
+    tiles.forEach(tile => {
+      const tx = toMinimapX(tile.x)
+      const ty = toMinimapY(tile.y)
+      let terrainColor = '#2a2a2a'
+      switch (tile.type) {
+        case 'grass':
+          terrainColor = '#1f7a3a'
+          break
+        case 'stone':
+          terrainColor = '#94a3b8'
+          break
+        case 'ore':
+          terrainColor = '#a16207'
+          break
+        case 'water':
+          terrainColor = '#2563eb'
+          break
+        case 'sand':
+          terrainColor = '#eab308'
+          break
+        default:
+          terrainColor = '#2a2a2a'
+      }
 
-    // Draw resource deposits
+      ctx.fillStyle = terrainColor
+      ctx.fillRect(tx, ty, Math.max(1, scale), Math.max(1, scale))
+    })
+
+    // Draw resource deposits on top of terrain
     tiles.forEach(tile => {
       if (tile.resource) {
         const x = toMinimapX(tile.x)
@@ -153,14 +179,17 @@ const Minimap = ({ width = 200, height = 200 }: MinimapProps) => {
       ctx.fillRect(x - 1, y - 1, 2, 2)
     })
 
-    // Draw player position (center)
-    const x = toMinimapX(0)
-    const y = toMinimapY(0)
+    // Draw base position (prefer base machine position; fall back to player position)
+    const baseMachine = machines.find(m => m.type === 'base' || m.isBase)
+    const baseWorldX = baseMachine?.position?.x ?? currentPlayer?.position?.x ?? 0
+    const baseWorldY = baseMachine?.position?.y ?? currentPlayer?.position?.y ?? 0
+    const bx = toMinimapX(baseWorldX)
+    const by = toMinimapY(baseWorldY)
     ctx.fillStyle = '#22c55e'
     ctx.strokeStyle = '#ffffff'
     ctx.lineWidth = 1
     ctx.beginPath()
-    ctx.arc(x, y, 3, 0, Math.PI * 2)
+    ctx.arc(bx, by, 3, 0, Math.PI * 2)
     ctx.fill()
     ctx.stroke()
 
@@ -176,7 +205,7 @@ const Minimap = ({ width = 200, height = 200 }: MinimapProps) => {
       <div className="minimap-legend">
         <div className="legend-item">
           <span className="legend-color" style={{ backgroundColor: '#22c55e' }} />
-          <span>You</span>
+          <span>Base</span>
         </div>
         <div className="legend-item">
           <span className="legend-color" style={{ backgroundColor: '#60a5fa' }} />

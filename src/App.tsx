@@ -263,11 +263,26 @@ function App() {
   const handleRetry = () => {
     // Get current game mode
     const currentMode = useGameStore.getState().currentGameMode
-    
-    // Restart with same mode
+
+    // Restart with same mode using default settings
     if (currentMode) {
-      handleStartGame(currentMode)
+      startGame({
+        maxPlayers: 1,
+        difficulty: 'normal',
+        pvpEnabled: false,
+        friendlyFire: false,
+        worldSeed: Date.now(),
+        modifiers: [],
+        enemiesEnabled: false,
+        enemyFactoriesEnabled: false,
+        oceanEnemiesEnabled: false,
+        maxEnemyBases: 5,
+        gameMode: 'automation',
+      }, currentMode)
+
+      setGameState('game')
     }
+
     setShowGameOver(false)
   }
 
