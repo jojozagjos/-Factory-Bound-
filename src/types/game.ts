@@ -122,6 +122,8 @@ export interface Player {
   maxHealth: number
   team?: string
   stats: PlayerStats
+  isGuest?: boolean // True for multiplayer guests (limited permissions)
+  isHost?: boolean // True for lobby host
 }
 
 export interface PlayerStats {

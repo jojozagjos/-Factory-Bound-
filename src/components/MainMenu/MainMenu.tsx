@@ -123,13 +123,18 @@ const MainMenu = ({ onStartGame, onStartTutorial, onStartMultiplayer, onLogout }
             >
               📚 Tutorial
             </button>
-            <button 
-              className="menu-button"
-              onClick={() => setShowProfile(true)}
-              aria-label="Open Profile"
-            >
-              👤 Profile
-            </button>
+            
+            {/* Hide profile for guest players */}
+            {!isGuest && (
+              <button 
+                className="menu-button"
+                onClick={() => setShowProfile(true)}
+                aria-label="Open Profile"
+              >
+                👤 Profile
+              </button>
+            )}
+            
             <button 
               className="menu-button"
               onClick={() => setShowSettings(true)}
