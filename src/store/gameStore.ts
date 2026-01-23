@@ -394,6 +394,12 @@ export const useGameStore = create<GameState>()(
       set((draft) => {
         draft.gameTime += deltaTime
         
+        // Update global playtime stats
+        draft.globalStats.totalPlaytime += deltaTime
+        if (draft.gameTime % 10 < deltaTime) { // Save every ~10 seconds
+          localStorage.setItem('factory_bound_global_stats', JSON.stringify(draft.globalStats))
+        }
+        
         // Update simulation engine
         if (draft.simulationEngine) {
           const simResult = draft.simulationEngine.update(
@@ -408,6 +414,56 @@ export const useGameStore = create<GameState>()(
           draft.projectiles = simResult.projectiles
         }
         
+        // Check for resource deliveries to base (Builderment-style)
+        const base = draft.machines.find(m => m.type === 'base')
+        if (base && base.baseEntrances) {
+          // Check each entrance for nearby items on belts/inserters
+          base.baseEntrances.forEach(entrance => {
+            // Find machines at entrance positions that might have items
+            draft.machines.forEach(machine => {
+              // Check if machine is adjacent to entrance and has items
+              const isAdjacent = 
+                Math.abs(machine.position.x - entrance.x) <= 1 &&
+                Math.abs(machine.position.y - entrance.y) <= 1
+              
+              if (isAdjacent && machine.inventory.length > 0) {
+                // Transfer items from machine to base (simulating delivery)
+                machine.inventory.forEach(item => {
+                  if (item.quantity > 0) {
+                    // Deliver resource to base
+                    let delivery = draft.resourceDeliveries.find(d => d.itemName === item.name)
+                    if (!delivery) {
+                      delivery = { itemName: item.name, quantityDelivered: 0, quantityRequired: 0 }
+                      draft.resourceDeliveries.push(delivery)
+                    }
+                    delivery.quantityDelivered += item.quantity
+                    
+                    // Update global stats
+                    draft.globalStats.totalResourcesGathered += item.quantity
+                  }
+                })
+                // Clear machine inventory after delivery
+                machine.inventory = []
+              }
+            })
+          })
+          
+          // Check and unlock machines based on deliveries
+          draft.machineUnlocks.forEach(unlock => {
+            if (unlock.unlocked) return
+            
+            const allRequirementsMet = unlock.requiredDeliveries.every(required => {
+              const delivery = draft.resourceDeliveries.find(d => d.itemName === required.name)
+              return delivery && delivery.quantityDelivered >= required.quantity
+            })
+            
+            if (allRequirementsMet) {
+              unlock.unlocked = true
+              console.log(`🎉 Unlocked machine: ${unlock.machineType}`)
+            }
+          })
+        }
+        
         // Update game mode manager
         if (draft.gameModeManager) {
           const modeResult = draft.gameModeManager.update(deltaTime)
@@ -415,6 +471,70 @@ export const useGameStore = create<GameState>()(
           if (modeResult.isVictory || modeResult.isDefeat) {
             draft.isRunning = false
           }
+        }
+        
+        // Spawn enemies if enabled
+        if (draft.session?.settings.enemiesEnabled && draft.worldMap) {
+          // Simple enemy spawning logic
+          const spawnInterval = 30 // seconds
+          if (draft.gameTime % spawnInterval < deltaTime) {
+            const spawnCount = draft.session.settings.difficulty === 'easy' ? 1 :
+                              draft.session.settings.difficulty === 'normal' ? 2 :
+                              draft.session.settings.difficulty === 'hard' ? 3 : 5
+            
+            for (let i = 0; i < spawnCount; i++) {
+              const enemy: Enemy = {
+                id: `enemy_${Date.now()}_${Math.random()}`,
+                type: 'basic',
+                position: {
+                  x: Math.floor(Math.random() * draft.worldMap.width),
+                  y: Math.floor(Math.random() * draft.worldMap.height),
+                },
+                health: 50,
+                maxHealth: 50,
+                target: base?.id,
+              }
+              draft.enemies.push(enemy)
+            }
+          }
+          
+          // Spawn enemy factories if enabled
+          if (draft.session.settings.enemyFactoriesEnabled) {
+            const maxBases = draft.session.settings.maxEnemyBases || 5
+            if (draft.enemyFactories.length < maxBases && draft.gameTime % 60 < deltaTime) {
+              const factory: EnemyFactory = {
+                id: `factory_${Date.now()}`,
+                position: {
+                  x: Math.floor(Math.random() * draft.worldMap.width),
+                  y: Math.floor(Math.random() * draft.worldMap.height),
+                },
+                health: 500,
+                maxHealth: 500,
+                spawnRate: 10, // enemies per minute
+                lastSpawnTime: draft.gameTime,
+                isOceanBase: draft.session.settings.oceanEnemiesEnabled && Math.random() < 0.3,
+              }
+              draft.enemyFactories.push(factory)
+            }
+          }
+          
+          // Enemy factories spawn enemies
+          draft.enemyFactories.forEach(factory => {
+            const spawnDelay = 60 / factory.spawnRate // seconds between spawns
+            if (draft.gameTime - factory.lastSpawnTime >= spawnDelay) {
+              const enemy: Enemy = {
+                id: `enemy_${Date.now()}_${Math.random()}`,
+                type: 'factory_spawn',
+                position: { ...factory.position },
+                health: 75,
+                maxHealth: 75,
+                target: base?.id,
+                spawnedFrom: factory.id,
+              }
+              draft.enemies.push(enemy)
+              factory.lastSpawnTime = draft.gameTime
+            }
+          })
         }
         
         // Check for player death
@@ -633,12 +753,12 @@ export const useGameStore = create<GameState>()(
       return unlock?.unlocked ?? false
     },
 
-    addEnemyFactory: (factory) => set((state) => {
+    addEnemyFactory: (factory: EnemyFactory) => set((state) => {
       state.enemyFactories.push(factory)
     }),
 
-    removeEnemyFactory: (id) => set((state) => {
-      state.enemyFactories = state.enemyFactories.filter(f => f.id !== id)
+    removeEnemyFactory: (id: string) => set((state) => {
+      state.enemyFactories = state.enemyFactories.filter((f: EnemyFactory) => f.id !== id)
     }),
   }))
 )
