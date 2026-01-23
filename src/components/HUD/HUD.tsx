@@ -9,9 +9,10 @@ interface HUDProps {
   onOpenTechTree: () => void
   onSave: () => void
   onLoad: () => void
+  inTutorial?: boolean
 }
 
-const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree, onSave, onLoad }: HUDProps) => {
+const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree, onSave, onLoad, inTutorial = false }: HUDProps) => {
   const currentPlayer = useGameStore(state => state.currentPlayer)
   const selectedMachine = useGameStore(state => state.selectedMachine)
   const isPaused = useGameStore(state => state.isPaused)
@@ -57,8 +58,8 @@ const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree
   // Handle keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Toggle player list with Tab (only in multiplayer)
-      if (e.key === 'Tab' && isMultiplayer) {
+      // Toggle player list with P (only in multiplayer)
+      if (e.key === 'p' && isMultiplayer) {
         e.preventDefault()
         setShowPlayerList(prev => !prev)
       }
@@ -159,35 +160,39 @@ const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree
               className={`control-btn ${showPlayerList ? 'active' : ''}`}
               onClick={() => setShowPlayerList(!showPlayerList)}
               aria-label="Toggle player list"
-              title="Player List (Tab)"
+              title="Player List (P)"
             >
               👥
             </button>
           )}
-          <button 
-            className="control-btn"
-            onClick={onSave}
-            aria-label="Save game"
-            title="Save game"
-          >
-            💾
-          </button>
-          <button 
-            className="control-btn"
-            onClick={onLoad}
-            aria-label="Load game"
-            title="Load game"
-          >
-            📁
-          </button>
-          <button 
-            className={`control-btn ${isPaused ? 'active' : ''}`}
-            onClick={handlePauseToggle}
-            aria-label={isPaused ? 'Resume game' : 'Pause game'}
-            title="Pause Menu (ESC)"
-          >
-            {isPaused ? '▶' : '⏸'}
-          </button>
+          {!inTutorial && (
+            <>
+              <button 
+                className="control-btn"
+                onClick={onSave}
+                aria-label="Save game"
+                title="Save game"
+              >
+                💾
+              </button>
+              <button 
+                className="control-btn"
+                onClick={onLoad}
+                aria-label="Load game"
+                title="Load game"
+              >
+                📁
+              </button>
+              <button 
+                className={`control-btn ${isPaused ? 'active' : ''}`}
+                onClick={handlePauseToggle}
+                aria-label={isPaused ? 'Resume game' : 'Pause game'}
+                title="Pause Menu (ESC)"
+              >
+                {isPaused ? '▶' : '⏸'}
+              </button>
+            </>
+          )}
         </div>
       </div>
 

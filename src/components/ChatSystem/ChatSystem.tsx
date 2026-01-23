@@ -8,6 +8,7 @@ interface ChatMessage {
   message: string
   timestamp: number
   type: 'player' | 'system' | 'team'
+  avatar?: string
 }
 
 const ChatSystem = () => {
@@ -17,6 +18,7 @@ const ChatSystem = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const currentPlayer = useGameStore(state => state.currentPlayer)
+  const profilePicture = useGameStore(state => state.profilePicture)
   const session = useGameStore(state => state.session)
 
   // Auto-scroll to bottom when new messages arrive
@@ -62,6 +64,7 @@ const ChatSystem = () => {
       message: inputValue.trim(),
       timestamp: Date.now(),
       type: 'player',
+      avatar: profilePicture,
     }
 
     // Add to local messages
@@ -120,6 +123,7 @@ const ChatSystem = () => {
             ) : (
               messages.map(msg => (
                 <div key={msg.id} className={`chat-message ${msg.type}`}>
+                  {msg.avatar && <span className="chat-avatar">{msg.avatar}</span>}
                   <span className="chat-time">{formatTime(msg.timestamp)}</span>
                   <span 
                     className="chat-sender" 

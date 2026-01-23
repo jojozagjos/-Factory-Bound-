@@ -68,10 +68,12 @@ interface GameState {
   selectedMachine: Machine | null
   isPaused: boolean
   showInventory: boolean
+  profilePicture: string
   
   // Actions
   setSession: (session: GameSession) => void
   setPlayer: (player: Player) => void
+  setProfilePicture: (avatar: string) => void
   setWorldMap: (map: WorldMap) => void
   addMachine: (machine: Machine) => void
   removeMachine: (id: string) => void
@@ -105,6 +107,7 @@ export const useGameStore = create<GameState>()(
     selectedMachine: null,
     isPaused: false,
     showInventory: false,
+    profilePicture: '👤',
     
     // Game Systems
     simulationEngine: null,
@@ -123,6 +126,8 @@ export const useGameStore = create<GameState>()(
     setSession: (session) => set({ session }),
     
     setPlayer: (player) => set({ currentPlayer: player }),
+    
+    setProfilePicture: (avatar) => set({ profilePicture: avatar }),
     
     setWorldMap: (map) => set({ worldMap: map }),
     

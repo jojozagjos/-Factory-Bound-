@@ -1,6 +1,9 @@
 import { useState } from 'react'
+import { useGameStore } from '../../store/gameStore'
 import MultiplayerLobby from '../MultiplayerLobby/MultiplayerLobby'
-import GameModeSelect from '../GameModeSelect/GameModeSelect'
+import ProfileScreen from '../ProfileScreen/ProfileScreen'
+import KeybindSettings from '../KeybindSettings/KeybindSettings'
+import NewGameScreen from '../NewGameScreen/NewGameScreen'
 import type { GameSession, GameMode } from '../../types/game'
 import './MainMenu.css'
 
@@ -12,13 +15,18 @@ interface MainMenuProps {
 }
 
 const MainMenu = ({ onStartGame, onStartTutorial, onStartMultiplayer, onLogout }: MainMenuProps) => {
+  const currentPlayer = useGameStore(state => state.currentPlayer)
   const [showSinglePlayer, setShowSinglePlayer] = useState(false)
   const [showMultiplayer, setShowMultiplayer] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
   const [showCredits, setShowCredits] = useState(false)
-  const [showGameModeSelect, setShowGameModeSelect] = useState(false)
+  const [showProfile, setShowProfile] = useState(false)
+  const [showKeybinds, setShowKeybinds] = useState(false)
+  const [showNewGame, setShowNewGame] = useState(false)
   const [multiplayerMode, setMultiplayerMode] = useState<'host' | 'join' | 'ranked' | null>(null)
   const [isPvP, setIsPvP] = useState(false)
+
+  const isGuest = !currentPlayer || currentPlayer.username === 'Guest'
 
   const handleMultiplayerStart = (session: GameSession) => {
     if (onStartMultiplayer) {
@@ -31,23 +39,36 @@ const MainMenu = ({ onStartGame, onStartTutorial, onStartMultiplayer, onLogout }
     setShowMultiplayer(false)
   }
 
-  const handleGameModeSelect = (mode: GameMode) => {
-    onStartGame(mode)
+  const handleNewGame = (worldName: string, seed: number, gameMode: GameMode) => {
+    // Store world name for future use (could add to session)
+    console.log('Starting new game:', worldName, 'with seed:', seed)
+    onStartGame(gameMode)
+    setShowNewGame(false)
   }
 
-  const handleCancelGameModeSelect = () => {
-    setShowGameModeSelect(false)
+  const handleCancelNewGame = () => {
+    setShowNewGame(false)
     setShowSinglePlayer(false)
   }
 
-  // Show game mode selector
-  if (showGameModeSelect) {
+  // Show new game screen
+  if (showNewGame) {
     return (
-      <GameModeSelect
-        onSelectMode={handleGameModeSelect}
-        onCancel={handleCancelGameModeSelect}
+      <NewGameScreen
+        onStartGame={handleNewGame}
+        onCancel={handleCancelNewGame}
       />
     )
+  }
+
+  // Show profile screen
+  if (showProfile) {
+    return <ProfileScreen onClose={() => setShowProfile(false)} />
+  }
+
+  // Show keybind settings
+  if (showKeybinds) {
+    return <KeybindSettings onClose={() => setShowKeybinds(false)} />
   }
 
   // Show multiplayer lobby if mode is selected
@@ -82,6 +103,8 @@ const MainMenu = ({ onStartGame, onStartTutorial, onStartMultiplayer, onLogout }
               className="menu-button primary"
               onClick={() => setShowMultiplayer(true)}
               aria-label="Start Multiplayer"
+              disabled={isGuest}
+              title={isGuest ? 'Login required for multiplayer' : ''}
             >
               🌐 Multiplayer
             </button>
@@ -91,6 +114,13 @@ const MainMenu = ({ onStartGame, onStartTutorial, onStartMultiplayer, onLogout }
               aria-label="Start Tutorial"
             >
               📚 Tutorial
+            </button>
+            <button 
+              className="menu-button"
+              onClick={() => setShowProfile(true)}
+              aria-label="Open Profile"
+            >
+              👤 Profile
             </button>
             <button 
               className="menu-button"
@@ -123,7 +153,7 @@ const MainMenu = ({ onStartGame, onStartTutorial, onStartMultiplayer, onLogout }
             <h2>Single Player</h2>
             <button 
               className="menu-button primary" 
-              onClick={() => setShowGameModeSelect(true)}
+              onClick={() => setShowNewGame(true)}
             >
               New Game
             </button>
@@ -140,42 +170,48 @@ const MainMenu = ({ onStartGame, onStartTutorial, onStartMultiplayer, onLogout }
         {showMultiplayer && (
           <div className="sub-menu slide-in">
             <h2>Multiplayer</h2>
-            <button 
-              className="menu-button primary" 
-              onClick={() => {
-                setIsPvP(false)
-                setMultiplayerMode('host')
-              }}
-            >
-              Host Co-op Game
-            </button>
-            <button 
-              className="menu-button" 
-              onClick={() => {
-                setIsPvP(false)
-                setMultiplayerMode('join')
-              }}
-            >
-              Join Co-op Game
-            </button>
-            <button 
-              className="menu-button" 
-              onClick={() => {
-                setIsPvP(true)
-                setMultiplayerMode('ranked')
-              }}
-            >
-              Ranked PvP
-            </button>
-            <button 
-              className="menu-button" 
-              onClick={() => {
-                setIsPvP(true)
-                setMultiplayerMode('host')
-              }}
-            >
-              Custom PvP
-            </button>
+            {isGuest ? (
+              <p className="warning-message">⚠️ Please login to access multiplayer features</p>
+            ) : (
+              <>
+                <button 
+                  className="menu-button primary" 
+                  onClick={() => {
+                    setIsPvP(false)
+                    setMultiplayerMode('host')
+                  }}
+                >
+                  Host Co-op Game
+                </button>
+                <button 
+                  className="menu-button" 
+                  onClick={() => {
+                    setIsPvP(false)
+                    setMultiplayerMode('join')
+                  }}
+                >
+                  Join Co-op Game
+                </button>
+                <button 
+                  className="menu-button" 
+                  onClick={() => {
+                    setIsPvP(true)
+                    setMultiplayerMode('ranked')
+                  }}
+                >
+                  Ranked PvP
+                </button>
+                <button 
+                  className="menu-button" 
+                  onClick={() => {
+                    setIsPvP(true)
+                    setMultiplayerMode('host')
+                  }}
+                >
+                  Custom PvP
+                </button>
+              </>
+            )}
             <button 
               className="menu-button back" 
               onClick={() => setShowMultiplayer(false)}
@@ -188,6 +224,12 @@ const MainMenu = ({ onStartGame, onStartTutorial, onStartMultiplayer, onLogout }
         {showSettings && (
           <div className="sub-menu slide-in">
             <h2>Settings</h2>
+            <button 
+              className="menu-button primary" 
+              onClick={() => setShowKeybinds(true)}
+            >
+              ⌨️ Keybind Settings
+            </button>
             <div className="settings-section">
               <h3>Graphics</h3>
               <label>

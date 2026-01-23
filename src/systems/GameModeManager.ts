@@ -40,7 +40,7 @@ export class GameModeManager {
         conditions.push({
           type: 'production' as GameMode,
           description: 'Produce 1000 electronic circuits',
-          isComplete: (_state: GameState) => {
+          isComplete: () => {
             // This would check actual production count
             // For now, simplified check
             return false // TODO: Implement production tracking
@@ -52,7 +52,7 @@ export class GameModeManager {
         conditions.push({
           type: 'exploration' as GameMode,
           description: 'Research all technologies (tier 5)',
-          isComplete: (_state: GameState) => {
+          isComplete: () => {
             // This would check tech tree completion
             return false // TODO: Implement tech tree completion check
           },
