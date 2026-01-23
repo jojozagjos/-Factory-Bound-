@@ -279,6 +279,12 @@ export const useGameStore = create<GameState>()(
       const generator = new ProceduralGenerator(settings.worldSeed || Date.now())
       state.worldMap = generator.generateMap(100, 100, settings.modifiers || [])
       
+      // Place starting base in center of map (Builderment-style)
+      const centerX = Math.floor(state.worldMap.width / 2)
+      const centerY = Math.floor(state.worldMap.height / 2)
+      const startingBase = state.buildingSystem.createStartingBase({ x: centerX, y: centerY })
+      state.machines.push(startingBase)
+      
       // Initialize game systems
       state.currentGameMode = gameMode || ('custom' as GameMode)
       state.simulationEngine = new SimulationEngine()

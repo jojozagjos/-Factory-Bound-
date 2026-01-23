@@ -78,6 +78,10 @@ export class BuildingSystem {
           { id: 'iron_plate', name: 'iron_plate', quantity: 20 },
         ],
       },
+      {
+        machineType: 'base' as MachineType,
+        costs: [], // Base is placed automatically at game start
+      },
     ]
 
     costs.forEach(cost => {
@@ -202,6 +206,7 @@ export class BuildingSystem {
       power_plant: 300,
       turret: 400,
       storage: 250,
+      base: 1000, // Base has high health
     }
     return healthMap[machineType] || 100
   }
@@ -219,6 +224,7 @@ export class BuildingSystem {
       power_plant: -200, // Negative means it produces power
       turret: 40,
       storage: 5,
+      base: 0, // Base doesn't require power
     }
     return powerMap[machineType] || 0
   }
@@ -260,6 +266,35 @@ export class BuildingSystem {
    */
   rotateBuilding(currentRotation: number): number {
     return (currentRotation + 90) % 360
+  }
+
+  /**
+   * Create the starting base with 4 entrances (Builderment-style)
+   */
+  createStartingBase(centerPosition: Position): Machine {
+    const base: Machine = {
+      id: `base_${Date.now()}`,
+      type: 'base' as MachineType,
+      position: centerPosition,
+      rotation: 0,
+      inventory: [],
+      power: {
+        required: 0,
+        available: 0,
+        connected: true,
+      },
+      health: 1000,
+      maxHealth: 1000,
+      isBase: true,
+      // 4 entrances: top, right, bottom, left (relative to center)
+      baseEntrances: [
+        { x: centerPosition.x, y: centerPosition.y - 2 }, // Top
+        { x: centerPosition.x + 2, y: centerPosition.y }, // Right
+        { x: centerPosition.x, y: centerPosition.y + 2 }, // Bottom
+        { x: centerPosition.x - 2, y: centerPosition.y }, // Left
+      ],
+    }
+    return base
   }
 
   /**

@@ -261,12 +261,46 @@ const GameCanvas = () => {
           case 'storage':
             color = '#fbbf24'
             break
+          case 'base':
+            color = '#10b981' // Green for base
+            break
           default:
             color = '#4a9eff'
         }
 
-        ctx.fillStyle = color
-        ctx.fillRect(-gridSize / 2 + 5, -gridSize / 2 + 5, gridSize - 10, gridSize - 10)
+        // Special rendering for base
+        if (machine.isBase && machine.baseEntrances) {
+          // Draw larger base structure (3x3 tiles)
+          ctx.fillStyle = color
+          ctx.fillRect(-gridSize * 1.5 + 5, -gridSize * 1.5 + 5, gridSize * 3 - 10, gridSize * 3 - 10)
+          
+          // Draw border
+          ctx.strokeStyle = '#22c55e'
+          ctx.lineWidth = 4
+          ctx.strokeRect(-gridSize * 1.5 + 5, -gridSize * 1.5 + 5, gridSize * 3 - 10, gridSize * 3 - 10)
+          
+          // Draw entrances as smaller colored squares
+          machine.baseEntrances.forEach(entrance => {
+            const relX = (entrance.x - machine.position.x) * gridSize
+            const relY = (entrance.y - machine.position.y) * gridSize
+            ctx.fillStyle = '#fbbf24'
+            ctx.fillRect(relX - 10, relY - 10, 20, 20)
+            ctx.strokeStyle = '#fff'
+            ctx.lineWidth = 2
+            ctx.strokeRect(relX - 10, relY - 10, 20, 20)
+          })
+          
+          // Draw base icon/text
+          ctx.fillStyle = '#fff'
+          ctx.font = '24px Arial'
+          ctx.textAlign = 'center'
+          ctx.textBaseline = 'middle'
+          ctx.fillText('🏭', 0, 0)
+        } else {
+          // Normal machine rendering
+          ctx.fillStyle = color
+          ctx.fillRect(-gridSize / 2 + 5, -gridSize / 2 + 5, gridSize - 10, gridSize - 10)
+        }
 
         // Draw health bar
         const healthPercent = machine.health / machine.maxHealth
