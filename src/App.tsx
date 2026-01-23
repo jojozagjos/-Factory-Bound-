@@ -183,6 +183,11 @@ function App() {
       friendlyFire: false,
       worldSeed: worldSeed || Date.now(),
       modifiers: [],
+      enemiesEnabled: false,
+      enemyFactoriesEnabled: false,
+      oceanEnemiesEnabled: false,
+      maxEnemyBases: 5,
+      gameMode: 'automation',
     }, gameMode)
     
     // Store world name if provided (could be used for save file name)
@@ -191,6 +196,37 @@ function App() {
     }
     
     setGameState('game')
+  }
+
+  const handleStartGame = (settings: {
+    worldName: string
+    seed: number
+    gameMode: GameMode
+    enemiesEnabled: boolean
+    enemyFactoriesEnabled: boolean
+    oceanEnemiesEnabled: boolean
+    maxEnemyBases: number
+    difficulty: 'easy' | 'normal' | 'hard' | 'nightmare'
+  }) => {
+    // Initialize game with all settings
+    startGame({
+      maxPlayers: 1,
+      difficulty: settings.difficulty,
+      pvpEnabled: false,
+      friendlyFire: false,
+      worldSeed: settings.seed,
+      modifiers: [],
+      enemiesEnabled: settings.enemiesEnabled,
+      enemyFactoriesEnabled: settings.enemyFactoriesEnabled,
+      oceanEnemiesEnabled: settings.oceanEnemiesEnabled,
+      maxEnemyBases: settings.maxEnemyBases,
+      gameMode: 'automation',
+    }, settings.gameMode)
+    
+    console.log('World name:', settings.worldName)
+    
+    setGameState('game')
+    audioSystem.playBackgroundMusic()
   }
 
   const handleStartTutorial = () => {
@@ -202,6 +238,11 @@ function App() {
       friendlyFire: false,
       worldSeed: 12345, // Fixed seed for consistent tutorial experience
       modifiers: [],
+      enemiesEnabled: false,
+      enemyFactoriesEnabled: false,
+      oceanEnemiesEnabled: false,
+      maxEnemyBases: 5,
+      gameMode: 'automation',
     }, GameMode.CUSTOM)
     
     setGameState('game')

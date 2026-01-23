@@ -4,7 +4,16 @@ import { GameMode } from '../../types/game'
 import './NewGameScreen.css'
 
 interface NewGameScreenProps {
-  onStartGame: (worldName: string, seed: number, gameMode: GameMode) => void
+  onStartGame: (settings: {
+    worldName: string
+    seed: number
+    gameMode: GameMode
+    enemiesEnabled: boolean
+    enemyFactoriesEnabled: boolean
+    oceanEnemiesEnabled: boolean
+    maxEnemyBases: number
+    difficulty: 'easy' | 'normal' | 'hard' | 'nightmare'
+  }) => void
   onCancel: () => void
 }
 
@@ -13,6 +22,13 @@ const NewGameScreen = ({ onStartGame, onCancel }: NewGameScreenProps) => {
   const [seed, setSeed] = useState(Date.now().toString())
   const [selectedMode, setSelectedMode] = useState<GameMode>(GameMode.CUSTOM)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  
+  // New Builderment-style game settings
+  const [enemiesEnabled, setEnemiesEnabled] = useState(false)
+  const [enemyFactoriesEnabled, setEnemyFactoriesEnabled] = useState(false)
+  const [oceanEnemiesEnabled, setOceanEnemiesEnabled] = useState(false)
+  const [maxEnemyBases, setMaxEnemyBases] = useState(5)
+  const [difficulty, setDifficulty] = useState<'easy' | 'normal' | 'hard' | 'nightmare'>('normal')
 
   const gameModes = [
     { mode: GameMode.PRODUCTION, name: 'Production', description: 'Focus on building and optimization', icon: '🏭' },
@@ -100,7 +116,16 @@ const NewGameScreen = ({ onStartGame, onCancel }: NewGameScreenProps) => {
 
   const handleStart = () => {
     const seedNumber = parseInt(seed) || Date.now()
-    onStartGame(worldName, seedNumber, selectedMode)
+    onStartGame({
+      worldName,
+      seed: seedNumber,
+      gameMode: selectedMode,
+      enemiesEnabled,
+      enemyFactoriesEnabled,
+      oceanEnemiesEnabled,
+      maxEnemyBases,
+      difficulty,
+    })
   }
 
   return (
@@ -186,6 +211,83 @@ const NewGameScreen = ({ onStartGame, onCancel }: NewGameScreenProps) => {
                   <div className="mode-icon">{mode.icon}</div>
                   <div className="mode-name">{mode.name}</div>
                   <div className="mode-description">{mode.description}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Enemy Settings */}
+          <div className="new-game-section">
+            <h2>⚔️ Enemy Settings</h2>
+            <div className="settings-grid">
+              <div className="setting-item">
+                <label className="checkbox-label">
+                  <input
+                    type="checkbox"
+                    checked={enemiesEnabled}
+                    onChange={(e) => setEnemiesEnabled(e.target.checked)}
+                  />
+                  <span>Enable Enemies</span>
+                </label>
+                <p className="setting-description">Enemies will spawn and attack your base</p>
+              </div>
+
+              {enemiesEnabled && (
+                <>
+                  <div className="setting-item">
+                    <label className="checkbox-label">
+                      <input
+                        type="checkbox"
+                        checked={enemyFactoriesEnabled}
+                        onChange={(e) => setEnemyFactoriesEnabled(e.target.checked)}
+                      />
+                      <span>Enemy Factories</span>
+                    </label>
+                    <p className="setting-description">Enemy bases will spawn and produce enemies</p>
+                  </div>
+
+                  <div className="setting-item">
+                    <label className="checkbox-label">
+                      <input
+                        type="checkbox"
+                        checked={oceanEnemiesEnabled}
+                        onChange={(e) => setOceanEnemiesEnabled(e.target.checked)}
+                      />
+                      <span>Ocean Enemies</span>
+                    </label>
+                    <p className="setting-description">Enemies can spawn from the ocean</p>
+                  </div>
+
+                  {enemyFactoriesEnabled && (
+                    <div className="setting-item">
+                      <label htmlFor="max-enemy-bases">Max Enemy Bases</label>
+                      <input
+                        id="max-enemy-bases"
+                        type="number"
+                        min="1"
+                        max="20"
+                        value={maxEnemyBases}
+                        onChange={(e) => setMaxEnemyBases(parseInt(e.target.value) || 5)}
+                      />
+                      <p className="setting-description">Maximum number of enemy factories that can exist</p>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Difficulty Settings */}
+          <div className="new-game-section">
+            <h2>⚙️ Difficulty</h2>
+            <div className="difficulty-buttons">
+              {(['easy', 'normal', 'hard', 'nightmare'] as const).map((level) => (
+                <button
+                  key={level}
+                  className={`difficulty-btn ${difficulty === level ? 'selected' : ''}`}
+                  onClick={() => setDifficulty(level)}
+                >
+                  <div className="difficulty-name">{level.charAt(0).toUpperCase() + level.slice(1)}</div>
                 </button>
               ))}
             </div>
