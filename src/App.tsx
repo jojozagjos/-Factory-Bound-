@@ -203,7 +203,7 @@ function App() {
     console.log('World name:', settings.worldName)
     
     setGameState('game')
-    // Background music would be played here if audioSystem.playBackgroundMusic() existed
+    // TODO: Implement audioSystem.playBackgroundMusic() - audio system pending
   }
 
   const handleStartTutorial = () => {
