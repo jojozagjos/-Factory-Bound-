@@ -15,6 +15,7 @@ import KeyboardHelp from './components/KeyboardHelp/KeyboardHelp'
 import AchievementNotification from './components/AchievementNotification/AchievementNotification'
 import ParticleSystem, { type Particle } from './components/ParticleSystem/ParticleSystem'
 import Tooltips, { useTooltips } from './components/Tooltips/Tooltips'
+import UnlockProgress from './components/UnlockProgress/UnlockProgress'
 import { useTutorialStore } from './store/tutorialStore'
 import { useGameStore } from './store/gameStore'
 import { useAutoSave } from './hooks/useAutoSave'
@@ -346,6 +347,7 @@ function App() {
             onLoad={() => handleOpenSaveManager('load')}
             inTutorial={isInTutorial}
           />
+          <UnlockProgress />
           {showNodeEditor && (
             <NodeEditor onClose={() => setShowNodeEditor(false)} />
           )}
