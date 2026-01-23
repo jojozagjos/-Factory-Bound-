@@ -175,30 +175,6 @@ function App() {
     setGameState('menu')
   }
 
-  const handleStartGame = (gameMode: GameMode, worldSeed?: number, worldName?: string) => {
-    // Initialize game with selected mode
-    startGame({
-      maxPlayers: 1,
-      difficulty: 'normal',
-      pvpEnabled: false,
-      friendlyFire: false,
-      worldSeed: worldSeed || Date.now(),
-      modifiers: [],
-      enemiesEnabled: false,
-      enemyFactoriesEnabled: false,
-      oceanEnemiesEnabled: false,
-      maxEnemyBases: 5,
-      gameMode: 'automation',
-    }, gameMode)
-    
-    // Store world name if provided (could be used for save file name)
-    if (worldName) {
-      console.log('World name:', worldName)
-    }
-    
-    setGameState('game')
-  }
-
   const handleStartGame = (settings: {
     worldName: string
     seed: number
@@ -227,7 +203,7 @@ function App() {
     console.log('World name:', settings.worldName)
     
     setGameState('game')
-    audioSystem.playBackgroundMusic()
+    // Background music would be played here if audioSystem.playBackgroundMusic() existed
   }
 
   const handleStartTutorial = () => {
