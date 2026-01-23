@@ -26,6 +26,21 @@ import { CombatSystem } from '../systems/CombatSystem'
 import { GameModeManager } from '../systems/GameModeManager'
 import { ProgressionSystem } from '../engine/progression/ProgressionSystem'
 
+// Enemy spawn configuration constants
+const ENEMY_SPAWN_CONFIG = {
+  easy: { count: 1, health: 50 },
+  normal: { count: 2, health: 50 },
+  hard: { count: 3, health: 75 },
+  nightmare: { count: 5, health: 100 },
+  factory: { health: 75 },
+  factoryBase: { health: 500, spawnRate: 10 }, // enemies per minute
+}
+
+// Helper function to generate unique IDs
+function generateUniqueId(prefix: string): string {
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
+}
+
 // Helper function to unlock dependent technologies
 function unlockDependentTechs(techTree: TechNode[], unlockedTechId: string): void {
   techTree.forEach(tech => {
@@ -428,7 +443,8 @@ export const useGameStore = create<GameState>()(
               
               if (isAdjacent && machine.inventory.length > 0) {
                 // Transfer items from machine to base (simulating delivery)
-                machine.inventory.forEach(item => {
+                const itemsToDeliver = [...machine.inventory]
+                itemsToDeliver.forEach(item => {
                   if (item.quantity > 0) {
                     // Deliver resource to base
                     let delivery = draft.resourceDeliveries.find(d => d.itemName === item.name)
@@ -442,7 +458,7 @@ export const useGameStore = create<GameState>()(
                     draft.globalStats.totalResourcesGathered += item.quantity
                   }
                 })
-                // Clear machine inventory after delivery
+                // Clear machine inventory after successful delivery
                 machine.inventory = []
               }
             })
@@ -478,20 +494,19 @@ export const useGameStore = create<GameState>()(
           // Simple enemy spawning logic
           const spawnInterval = 30 // seconds
           if (draft.gameTime % spawnInterval < deltaTime) {
-            const spawnCount = draft.session.settings.difficulty === 'easy' ? 1 :
-                              draft.session.settings.difficulty === 'normal' ? 2 :
-                              draft.session.settings.difficulty === 'hard' ? 3 : 5
+            const difficulty = draft.session.settings.difficulty
+            const config = ENEMY_SPAWN_CONFIG[difficulty]
             
-            for (let i = 0; i < spawnCount; i++) {
+            for (let i = 0; i < config.count; i++) {
               const enemy: Enemy = {
-                id: `enemy_${Date.now()}_${Math.random()}`,
+                id: generateUniqueId('enemy'),
                 type: 'basic',
                 position: {
                   x: Math.floor(Math.random() * draft.worldMap.width),
                   y: Math.floor(Math.random() * draft.worldMap.height),
                 },
-                health: 50,
-                maxHealth: 50,
+                health: config.health,
+                maxHealth: config.health,
                 target: base?.id,
               }
               draft.enemies.push(enemy)
@@ -503,14 +518,14 @@ export const useGameStore = create<GameState>()(
             const maxBases = draft.session.settings.maxEnemyBases || 5
             if (draft.enemyFactories.length < maxBases && draft.gameTime % 60 < deltaTime) {
               const factory: EnemyFactory = {
-                id: `factory_${Date.now()}`,
+                id: generateUniqueId('factory'),
                 position: {
                   x: Math.floor(Math.random() * draft.worldMap.width),
                   y: Math.floor(Math.random() * draft.worldMap.height),
                 },
-                health: 500,
-                maxHealth: 500,
-                spawnRate: 10, // enemies per minute
+                health: ENEMY_SPAWN_CONFIG.factoryBase.health,
+                maxHealth: ENEMY_SPAWN_CONFIG.factoryBase.health,
+                spawnRate: ENEMY_SPAWN_CONFIG.factoryBase.spawnRate,
                 lastSpawnTime: draft.gameTime,
                 isOceanBase: draft.session.settings.oceanEnemiesEnabled && Math.random() < 0.3,
               }
@@ -523,11 +538,11 @@ export const useGameStore = create<GameState>()(
             const spawnDelay = 60 / factory.spawnRate // seconds between spawns
             if (draft.gameTime - factory.lastSpawnTime >= spawnDelay) {
               const enemy: Enemy = {
-                id: `enemy_${Date.now()}_${Math.random()}`,
+                id: generateUniqueId('enemy'),
                 type: 'factory_spawn',
                 position: { ...factory.position },
-                health: 75,
-                maxHealth: 75,
+                health: ENEMY_SPAWN_CONFIG.factory.health,
+                maxHealth: ENEMY_SPAWN_CONFIG.factory.health,
                 target: base?.id,
                 spawnedFrom: factory.id,
               }
@@ -588,7 +603,7 @@ export const useGameStore = create<GameState>()(
       
       // Create and place machine
       const newMachine: Machine = {
-        id: `machine_${Date.now()}_${Math.random()}`,
+        id: generateUniqueId('machine'),
         type: machineType,
         position,
         rotation: 0,
