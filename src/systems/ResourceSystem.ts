@@ -99,7 +99,7 @@ export class ResourceSystem {
       // Science packs
       {
         id: 'science_pack_1',
-        name: 'Automation Science Pack',
+        name: 'Automation Science Pack (Red)',
         inputs: [
           { id: 'iron_gear_input', name: 'iron_gear', quantity: 1 },
           { id: 'copper_plate_input', name: 'copper_plate', quantity: 1 },
@@ -109,13 +109,46 @@ export class ResourceSystem {
       },
       {
         id: 'science_pack_2',
-        name: 'Logistic Science Pack',
+        name: 'Logistic Science Pack (Green)',
         inputs: [
           { id: 'inserter_input', name: 'inserter', quantity: 1 },
           { id: 'belt_input', name: 'transport_belt', quantity: 1 },
         ],
         outputs: [{ id: 'science_2_output', name: 'science_pack_2', quantity: 1 }],
         craftingTime: 6,
+      },
+      {
+        id: 'science_pack_3',
+        name: 'Military Science Pack (Blue)',
+        inputs: [
+          { id: 'ammo_input', name: 'ammo_magazine', quantity: 1 },
+          { id: 'wall_input', name: 'wall', quantity: 2 },
+          { id: 'grenade_input', name: 'grenade', quantity: 1 },
+        ],
+        outputs: [{ id: 'science_3_output', name: 'science_pack_3', quantity: 2 }],
+        craftingTime: 10,
+      },
+      {
+        id: 'science_pack_4',
+        name: 'Chemical Science Pack (Purple)',
+        inputs: [
+          { id: 'engine_input', name: 'engine_unit', quantity: 2 },
+          { id: 'adv_circuit_input', name: 'advanced_circuit', quantity: 3 },
+          { id: 'sulfur_input', name: 'sulfur', quantity: 1 },
+        ],
+        outputs: [{ id: 'science_4_output', name: 'science_pack_4', quantity: 2 }],
+        craftingTime: 24,
+      },
+      {
+        id: 'science_pack_5',
+        name: 'Production Science Pack (Yellow)',
+        inputs: [
+          { id: 'rail_input', name: 'rail', quantity: 30 },
+          { id: 'electric_furnace_input', name: 'electric_furnace', quantity: 1 },
+          { id: 'productivity_module_input', name: 'productivity_module', quantity: 1 },
+        ],
+        outputs: [{ id: 'science_5_output', name: 'science_pack_5', quantity: 3 }],
+        craftingTime: 21,
       },
       // Combat items
       {

@@ -259,30 +259,110 @@ const GameCanvas = () => {
 
         // Machine color by type
         let color = '#4a9eff' // Default blue
+        let tierIndicator = ''
         switch (machine.type) {
+          // Miners
           case 'miner':
             color = '#fbbf24'
             break
-          case 'assembler':
-            color = '#4ade80'
+          case 'miner_t2':
+            color = '#f59e0b'
+            tierIndicator = 'II'
             break
+          case 'miner_t3':
+            color = '#d97706'
+            tierIndicator = 'III'
+            break
+          
+          // Smelters
           case 'smelter':
             color = '#f97316'
             break
+          case 'steel_furnace':
+            color = '#ea580c'
+            tierIndicator = 'S'
+            break
+          case 'electric_furnace':
+            color = '#dc2626'
+            tierIndicator = 'E'
+            break
+          
+          // Assemblers
+          case 'assembler':
+            color = '#4ade80'
+            break
+          case 'assembler_t2':
+            color = '#22c55e'
+            tierIndicator = 'II'
+            break
+          case 'assembler_t3':
+            color = '#16a34a'
+            tierIndicator = 'III'
+            break
+          
+          // Belts
           case 'belt':
             color = '#94a3b8'
             break
+          case 'fast_belt':
+            color = '#ef4444'
+            tierIndicator = 'F'
+            break
+          case 'express_belt':
+            color = '#3b82f6'
+            tierIndicator = 'E'
+            break
+          
+          // Inserters
           case 'inserter':
             color = '#a78bfa'
             break
-          case 'turret':
-            color = '#ef4444'
+          case 'fast_inserter':
+            color = '#8b5cf6'
+            tierIndicator = 'F'
             break
+          case 'stack_inserter':
+            color = '#7c3aed'
+            tierIndicator = 'S'
+            break
+          
+          // Logistics
+          case 'splitter':
+            color = '#64748b'
+            break
+          case 'underground_belt':
+            color = '#475569'
+            break
+          
+          // Power
           case 'power_plant':
             color = '#8b5cf6'
             break
+          case 'solar_panel':
+            color = '#eab308'
+            break
+          case 'accumulator':
+            color = '#06b6d4'
+            break
+          
+          // Combat
+          case 'turret':
+            color = '#ef4444'
+            break
+          case 'laser_turret':
+            color = '#ec4899'
+            tierIndicator = 'L'
+            break
+          case 'wall':
+            color = '#78716c'
+            break
+          
+          // Special
           case 'storage':
             color = '#fbbf24'
+            break
+          case 'research_lab':
+            color = '#06b6d4'
             break
           case 'base':
             color = '#10b981' // Green for base
@@ -325,6 +405,15 @@ const GameCanvas = () => {
           // Normal machine rendering
           ctx.fillStyle = color
           ctx.fillRect(-gridSize / 2 + 5, -gridSize / 2 + 5, gridSize - 10, gridSize - 10)
+          
+          // Draw tier indicator for upgraded machines
+          if (tierIndicator) {
+            ctx.fillStyle = '#fff'
+            ctx.font = 'bold 10px Arial'
+            ctx.textAlign = 'center'
+            ctx.textBaseline = 'middle'
+            ctx.fillText(tierIndicator, gridSize / 2 - 12, -gridSize / 2 + 12)
+          }
         }
 
         // Draw health bar

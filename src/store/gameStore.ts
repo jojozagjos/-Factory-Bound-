@@ -401,6 +401,9 @@ export const useGameStore = create<GameState>()(
             { id: 'iron_gear', name: 'iron_gear', quantity: 50 },
             { id: 'electronic_circuit', name: 'electronic_circuit', quantity: 20 },
             { id: 'stone', name: 'stone', quantity: 50 },
+            // Science packs for research
+            { id: 'science_pack_1', name: 'science_pack_1', quantity: 100 },
+            { id: 'science_pack_2', name: 'science_pack_2', quantity: 50 },
           ],
           health: 100,
           maxHealth: 100,
