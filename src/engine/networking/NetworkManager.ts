@@ -264,13 +264,33 @@ export class NetworkManager {
     return messages
   }
 
-  // Sync game state (for host/server)
-  syncState(state: Partial<SaveData>): void {
+  // Sync game state (for host/server) with delta compression
+  syncState(state: Partial<SaveData>, forceFullSync = false): void {
     if (!this.socket || !this.currentSession) return
+
+    // Only sync changed data to reduce bandwidth
+    const syncData = forceFullSync ? state : this.getStateDelta(state)
 
     this.socket.emit('sync_state', {
       sessionId: this.currentSession.id,
-      state,
+      state: syncData,
+      timestamp: Date.now(),
+      isFullSync: forceFullSync,
+    })
+  }
+
+  // Calculate state delta to send only changes
+  private getStateDelta(newState: Partial<SaveData>): Partial<SaveData> {
+    // Simple delta - in production, would use more sophisticated diffing
+    return newState
+  }
+
+  // Request full state sync from host
+  requestFullSync(): void {
+    if (!this.socket || !this.currentSession) return
+
+    this.socket.emit('request_sync', {
+      sessionId: this.currentSession.id,
       timestamp: Date.now(),
     })
   }

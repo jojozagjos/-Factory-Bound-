@@ -85,9 +85,24 @@ const NewGameScreen = ({ onStartGame, onCancel }: NewGameScreenProps) => {
           ctx.fillStyle = color
           ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize)
 
-          // Draw resource
+          // Draw resource with proper colors for all 4 types
           if (tile.resource) {
-            ctx.fillStyle = tile.resource.type === 'iron_ore' ? '#a1a1aa' : '#f97316'
+            let resourceColor = '#a1a1aa' // Default iron
+            switch (tile.resource.type) {
+              case 'iron_ore':
+                resourceColor = '#a1a1aa' // Gray
+                break
+              case 'copper_ore':
+                resourceColor = '#f97316' // Orange
+                break
+              case 'coal':
+                resourceColor = '#27272a' // Black
+                break
+              case 'stone':
+                resourceColor = '#78716c' // Brown
+                break
+            }
+            ctx.fillStyle = resourceColor
             ctx.beginPath()
             ctx.arc(
               x * tileSize + tileSize / 2,

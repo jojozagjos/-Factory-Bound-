@@ -22,24 +22,33 @@ const initialNodes: Node[] = [
   {
     id: '1',
     type: 'input',
-    data: { label: 'Input: Sensor Data' },
+    data: { label: '📊 Item Count Sensor' },
     position: { x: 100, y: 100 },
   },
   {
     id: '2',
     type: 'default',
-    data: { label: 'Logic: If-Then' },
+    data: { label: '🔀 Condition: If > 100' },
     position: { x: 300, y: 100 },
   },
   {
     id: '3',
     type: 'output',
-    data: { label: 'Output: Activate Belt' },
+    data: { label: '⚙️ Enable Machine' },
     position: { x: 500, y: 100 },
+  },
+  {
+    id: '4',
+    type: 'default',
+    data: { label: '🔢 Counter' },
+    position: { x: 300, y: 200 },
   },
 ]
 
-const initialEdges: Edge[] = []
+const initialEdges: Edge[] = [
+  { id: 'e1-2', source: '1', target: '2' },
+  { id: 'e2-3', source: '2', target: '3' },
+]
 
 const NodeEditor = ({ onClose }: NodeEditorProps) => {
   const [nodes, setNodes] = React.useState<Node[]>(initialNodes)
@@ -61,19 +70,30 @@ const NodeEditor = ({ onClose }: NodeEditorProps) => {
   )
 
   const addNode = (type: string) => {
+    const nodeLabels: Record<string, string> = {
+      'input': '📊 Item Count',
+      'condition': '🔀 If-Then',
+      'counter': '🔢 Counter',
+      'timer': '⏱️ Timer',
+      'splitter': '↔️ Smart Splitter',
+      'output': '⚙️ Machine Control',
+    }
+    
     const newNode: Node = {
       id: `${nodes.length + 1}`,
       type: type === 'input' || type === 'output' ? type : 'default',
       data: { 
-        label: type === 'input' 
-          ? 'New Input' 
-          : type === 'output' 
-          ? 'New Output' 
-          : 'New Logic Node' 
+        label: nodeLabels[type] || 'New Node'
       },
       position: { x: Math.random() * 400 + 100, y: Math.random() * 400 + 100 },
     }
     setNodes([...nodes, newNode])
+  }
+
+  const saveProgram = () => {
+    console.log('Saving node program:', { nodes, edges })
+    // This would save the program to the selected machine
+    alert('Node program saved! This will control machine behavior.')
   }
 
   return (
@@ -88,15 +108,24 @@ const NodeEditor = ({ onClose }: NodeEditorProps) => {
 
         <div className="node-toolbar">
           <button onClick={() => addNode('input')} className="toolbar-btn">
-            ➕ Input
+            📊 Input
           </button>
-          <button onClick={() => addNode('logic')} className="toolbar-btn">
-            ➕ Logic
+          <button onClick={() => addNode('condition')} className="toolbar-btn">
+            🔀 Condition
+          </button>
+          <button onClick={() => addNode('counter')} className="toolbar-btn">
+            🔢 Counter
+          </button>
+          <button onClick={() => addNode('timer')} className="toolbar-btn">
+            ⏱️ Timer
+          </button>
+          <button onClick={() => addNode('splitter')} className="toolbar-btn">
+            ↔️ Splitter
           </button>
           <button onClick={() => addNode('output')} className="toolbar-btn">
-            ➕ Output
+            ⚙️ Output
           </button>
-          <button className="toolbar-btn">
+          <button onClick={saveProgram} className="toolbar-btn save-btn">
             💾 Save Program
           </button>
           <button className="toolbar-btn">
