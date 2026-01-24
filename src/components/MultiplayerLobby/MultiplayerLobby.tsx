@@ -49,6 +49,7 @@ const MultiplayerLobby = ({ mode, isPvP, onStartGame, onCancel }: MultiplayerLob
     try {
       await networkManager.connect()
       setIsConnected(true)
+      setOfflineMode(false)
       
       if (mode === 'join' || mode === 'ranked') {
         // Fetch available sessions
@@ -58,7 +59,9 @@ const MultiplayerLobby = ({ mode, isPvP, onStartGame, onCancel }: MultiplayerLob
     } catch (err) {
       // Fallback to offline mode
       setOfflineMode(true)
-      setError('Server unavailable. Operating in offline mode - multiplayer features disabled.')
+      setIsConnected(false)
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error'
+      setError(`Server unavailable: ${errorMessage}\n\nYou can still play in single-player mode.`)
       console.error('Connection error:', err)
     } finally {
       setIsConnecting(false)
@@ -141,25 +144,35 @@ const MultiplayerLobby = ({ mode, isPvP, onStartGame, onCancel }: MultiplayerLob
           <div className="lobby-loading">
             <div className="loading-spinner"></div>
             <p>Connecting to game server...</p>
+            <p className="connection-status">Attempting to connect to {networkManager.isInOfflineMode ? 'offline mode' : 'multiplayer server'}</p>
           </div>
         </div>
       </div>
     )
   }
 
-  if (!isConnected) {
+  if (!isConnected && offlineMode) {
     return (
       <div className="multiplayer-lobby">
         <div className="lobby-container">
           <div className="lobby-error">
-            <h2>Connection Failed</h2>
-            <p>{error || 'Unable to connect to game server'}</p>
+            <h2>⚠️ Offline Mode</h2>
+            <p className="error-message">{error}</p>
+            <div className="offline-info">
+              <p>Multiplayer features require an active server connection.</p>
+              <p>Please check:</p>
+              <ul>
+                <li>Server is running on {networkManager['serverUrl']}</li>
+                <li>Network connection is active</li>
+                <li>Firewall allows connections</li>
+              </ul>
+            </div>
             <div className="lobby-actions">
               <button className="lobby-button primary" onClick={connectToServer}>
-                Retry Connection
+                🔄 Retry Connection
               </button>
               <button className="lobby-button" onClick={onCancel}>
-                Back to Menu
+                ← Back to Menu
               </button>
             </div>
           </div>
