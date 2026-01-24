@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 
 export interface CameraState {
   x: number
@@ -14,15 +14,27 @@ interface CameraControlsProps {
 }
 
 const CameraControls = ({ camera, onCameraChange, canvasRef, worldBounds }: CameraControlsProps) => {
+  // Use refs to avoid recreating event listeners on every camera update
+  const cameraRef = useRef(camera)
+  const onCameraChangeRef = useRef(onCameraChange)
+  const worldBoundsRef = useRef(worldBounds)
+
+  // Update refs when props change
+  useEffect(() => {
+    cameraRef.current = camera
+    onCameraChangeRef.current = onCameraChange
+    worldBoundsRef.current = worldBounds
+  }, [camera, onCameraChange, worldBounds])
+
   // Helper function to clamp camera position within world bounds
   const clampCamera = (newCamera: CameraState): CameraState => {
-    if (!worldBounds) return newCamera
+    if (!worldBoundsRef.current) return newCamera
     
     const gridSize = 50
-    const maxX = (worldBounds.width * gridSize) / 2
-    const maxY = (worldBounds.height * gridSize) / 2
-    const minX = -(worldBounds.width * gridSize) / 2
-    const minY = -(worldBounds.height * gridSize) / 2
+    const maxX = (worldBoundsRef.current.width * gridSize) / 2
+    const maxY = (worldBoundsRef.current.height * gridSize) / 2
+    const minX = -(worldBoundsRef.current.width * gridSize) / 2
+    const minY = -(worldBoundsRef.current.height * gridSize) / 2
     
     // Add padding based on zoom to prevent seeing edges
     const padding = 200 / newCamera.zoom
@@ -56,13 +68,14 @@ const CameraControls = ({ camera, onCameraChange, canvasRef, worldBounds }: Came
         const deltaX = e.clientX - lastMousePos.x
         const deltaY = e.clientY - lastMousePos.y
         
+        const currentCamera = cameraRef.current
         const newCamera = clampCamera({
-          ...camera,
-          x: camera.x - deltaX / camera.zoom,
-          y: camera.y - deltaY / camera.zoom,
+          ...currentCamera,
+          x: currentCamera.x - deltaX / currentCamera.zoom,
+          y: currentCamera.y - deltaY / currentCamera.zoom,
         })
         
-        onCameraChange(newCamera)
+        onCameraChangeRef.current(newCamera)
 
         lastMousePos = { x: e.clientX, y: e.clientY }
       }
@@ -78,17 +91,18 @@ const CameraControls = ({ camera, onCameraChange, canvasRef, worldBounds }: Came
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault()
       
+      const currentCamera = cameraRef.current
       const zoomSpeed = 0.001
       const zoomDelta = -e.deltaY * zoomSpeed
-      const newZoom = Math.max(0.25, Math.min(4, camera.zoom + zoomDelta))
+      const newZoom = Math.max(0.25, Math.min(4, currentCamera.zoom + zoomDelta))
 
       // Zoom toward mouse position
       const rect = canvas.getBoundingClientRect()
       const mouseX = e.clientX - rect.left
       const mouseY = e.clientY - rect.top
 
-      const worldX = (mouseX - canvas.width / 2) / camera.zoom + camera.x
-      const worldY = (mouseY - canvas.height / 2) / camera.zoom + camera.y
+      const worldX = (mouseX - canvas.width / 2) / currentCamera.zoom + currentCamera.x
+      const worldY = (mouseY - canvas.height / 2) / currentCamera.zoom + currentCamera.y
 
       const newX = worldX - (mouseX - canvas.width / 2) / newZoom
       const newY = worldY - (mouseY - canvas.height / 2) / newZoom
@@ -99,7 +113,7 @@ const CameraControls = ({ camera, onCameraChange, canvasRef, worldBounds }: Came
         zoom: newZoom,
       })
       
-      onCameraChange(newCamera)
+      onCameraChangeRef.current(newCamera)
     }
 
     // Prevent context menu on right click
@@ -109,25 +123,26 @@ const CameraControls = ({ camera, onCameraChange, canvasRef, worldBounds }: Came
 
     // Keyboard controls for zoom only
     const handleKeyDown = (e: KeyboardEvent) => {
-      const newCamera = { ...camera }
+      const currentCamera = cameraRef.current
+      const newCamera = { ...currentCamera }
 
       switch (e.key) {
         case '=':
         case '+':
-          newCamera.zoom = Math.min(4, camera.zoom * 1.1)
-          onCameraChange(newCamera)
+          newCamera.zoom = Math.min(4, currentCamera.zoom * 1.1)
+          onCameraChangeRef.current(newCamera)
           break
         case '-':
         case '_':
-          newCamera.zoom = Math.max(0.25, camera.zoom / 1.1)
-          onCameraChange(newCamera)
+          newCamera.zoom = Math.max(0.25, currentCamera.zoom / 1.1)
+          onCameraChangeRef.current(newCamera)
           break
         case '0':
           // Reset camera: if worldBounds provided, center on world; otherwise reset to origin
           const gridSize = 50
-          const centerX = worldBounds ? (worldBounds.width * gridSize) / 2 : 0
-          const centerY = worldBounds ? (worldBounds.height * gridSize) / 2 : 0
-          onCameraChange({ x: centerX, y: centerY, zoom: 1 })
+          const centerX = worldBoundsRef.current ? (worldBoundsRef.current.width * gridSize) / 2 : 0
+          const centerY = worldBoundsRef.current ? (worldBoundsRef.current.height * gridSize) / 2 : 0
+          onCameraChangeRef.current({ x: centerX, y: centerY, zoom: 1 })
           break
       }
     }
@@ -149,7 +164,7 @@ const CameraControls = ({ camera, onCameraChange, canvasRef, worldBounds }: Came
       canvas.removeEventListener('contextmenu', handleContextMenu)
       document.removeEventListener('keydown', handleKeyDown)
     }
-  }, [camera, onCameraChange, canvasRef])
+  }, [canvasRef])
 
   return null // This component doesn't render anything
 }

@@ -30,6 +30,17 @@ const GameCanvas = () => {
     }
   })
   const [showGrid, setShowGrid] = useState(true)
+  const animationTimeRef = useRef(0) // For belt animation
+  const particlesRef = useRef<Array<{
+    x: number
+    y: number
+    vx: number
+    vy: number
+    life: number
+    maxLife: number
+    color: string
+    size: number
+  }>>([]) // For particle effects
 
   // Update camera position when worldMap loads
   useEffect(() => {
@@ -69,6 +80,18 @@ const GameCanvas = () => {
 
     // Simple render loop
     const render = () => {
+      // Update animation time for belt animations
+      animationTimeRef.current += 0.016 // ~60fps
+      
+      // Update particles
+      particlesRef.current = particlesRef.current.filter(p => {
+        p.x += p.vx
+        p.y += p.vy
+        p.vy += 0.05 // Gravity
+        p.life -= 1
+        return p.life > 0
+      })
+      
       // Clear canvas completely
       ctx.save()
       ctx.setTransform(1, 0, 0, 1, 0, 0)
@@ -187,6 +210,26 @@ const GameCanvas = () => {
                 ctx.beginPath()
                 ctx.arc(0, 0, resourceSize - 3, 0, Math.PI * 2)
                 ctx.fill()
+              } else if (tile.resource.type === 'coal') {
+                // Coal - black
+                ctx.fillStyle = '#000000'
+                ctx.beginPath()
+                ctx.arc(0, 0, resourceSize, 0, Math.PI * 2)
+                ctx.fill()
+                ctx.fillStyle = '#27272a'
+                ctx.beginPath()
+                ctx.arc(0, 0, resourceSize - 3, 0, Math.PI * 2)
+                ctx.fill()
+              } else if (tile.resource.type === 'stone') {
+                // Stone - gray/brown
+                ctx.fillStyle = '#57534e'
+                ctx.beginPath()
+                ctx.arc(0, 0, resourceSize, 0, Math.PI * 2)
+                ctx.fill()
+                ctx.fillStyle = '#78716c'
+                ctx.beginPath()
+                ctx.arc(0, 0, resourceSize - 3, 0, Math.PI * 2)
+                ctx.fill()
               }
               
               ctx.restore()
@@ -239,30 +282,110 @@ const GameCanvas = () => {
 
         // Machine color by type
         let color = '#4a9eff' // Default blue
+        let tierIndicator = ''
         switch (machine.type) {
+          // Miners
           case 'miner':
             color = '#fbbf24'
             break
-          case 'assembler':
-            color = '#4ade80'
+          case 'miner_t2':
+            color = '#f59e0b'
+            tierIndicator = 'II'
             break
+          case 'miner_t3':
+            color = '#d97706'
+            tierIndicator = 'III'
+            break
+          
+          // Smelters
           case 'smelter':
             color = '#f97316'
             break
+          case 'steel_furnace':
+            color = '#ea580c'
+            tierIndicator = 'S'
+            break
+          case 'electric_furnace':
+            color = '#dc2626'
+            tierIndicator = 'E'
+            break
+          
+          // Assemblers
+          case 'assembler':
+            color = '#4ade80'
+            break
+          case 'assembler_t2':
+            color = '#22c55e'
+            tierIndicator = 'II'
+            break
+          case 'assembler_t3':
+            color = '#16a34a'
+            tierIndicator = 'III'
+            break
+          
+          // Belts
           case 'belt':
             color = '#94a3b8'
             break
+          case 'fast_belt':
+            color = '#ef4444'
+            tierIndicator = 'F'
+            break
+          case 'express_belt':
+            color = '#3b82f6'
+            tierIndicator = 'E'
+            break
+          
+          // Inserters
           case 'inserter':
             color = '#a78bfa'
             break
-          case 'turret':
-            color = '#ef4444'
+          case 'fast_inserter':
+            color = '#8b5cf6'
+            tierIndicator = 'F'
             break
+          case 'stack_inserter':
+            color = '#7c3aed'
+            tierIndicator = 'S'
+            break
+          
+          // Logistics
+          case 'splitter':
+            color = '#64748b'
+            break
+          case 'underground_belt':
+            color = '#475569'
+            break
+          
+          // Power
           case 'power_plant':
             color = '#8b5cf6'
             break
+          case 'solar_panel':
+            color = '#eab308'
+            break
+          case 'accumulator':
+            color = '#06b6d4'
+            break
+          
+          // Combat
+          case 'turret':
+            color = '#ef4444'
+            break
+          case 'laser_turret':
+            color = '#ec4899'
+            tierIndicator = 'L'
+            break
+          case 'wall':
+            color = '#78716c'
+            break
+          
+          // Special
           case 'storage':
             color = '#fbbf24'
+            break
+          case 'research_lab':
+            color = '#06b6d4'
             break
           case 'base':
             color = '#10b981' // Green for base
@@ -301,10 +424,78 @@ const GameCanvas = () => {
           ctx.textAlign = 'center'
           ctx.textBaseline = 'middle'
           ctx.fillText(BASE_ICON, 0, 0)
-        } else {
+        } 
+        // Special rendering for belts with animation
+        else if (machine.type === 'belt' || machine.type === 'fast_belt' || machine.type === 'express_belt') {
+          ctx.fillStyle = color
+          ctx.fillRect(-gridSize / 2 + 5, -gridSize / 2 + 5, gridSize - 10, gridSize - 10)
+          
+          // Animated belt lines
+          const beltSpeed = machine.type === 'express_belt' ? 3 : machine.type === 'fast_belt' ? 2 : 1
+          const lineSpacing = 8
+          const offset = (animationTimeRef.current * beltSpeed * 20) % lineSpacing
+          
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)'
+          ctx.lineWidth = 2
+          for (let i = -gridSize / 2; i < gridSize / 2; i += lineSpacing) {
+            ctx.beginPath()
+            ctx.moveTo(-gridSize / 2 + 8, i + offset)
+            ctx.lineTo(gridSize / 2 - 8, i + offset)
+            ctx.stroke()
+          }
+          
+          // Tier indicator
+          if (tierIndicator) {
+            ctx.fillStyle = '#fff'
+            ctx.font = 'bold 10px Arial'
+            ctx.textAlign = 'center'
+            ctx.textBaseline = 'middle'
+            ctx.fillText(tierIndicator, gridSize / 2 - 12, -gridSize / 2 + 12)
+          }
+        }
+        // Special rendering for smelters with smoke particles
+        else if (machine.type === 'smelter' || machine.type === 'steel_furnace' || machine.type === 'electric_furnace') {
+          ctx.fillStyle = color
+          ctx.fillRect(-gridSize / 2 + 5, -gridSize / 2 + 5, gridSize - 10, gridSize - 10)
+          
+          // Emit smoke particles occasionally
+          if (Math.random() < 0.05) {
+            const worldX = machine.position.x * gridSize + gridSize / 2
+            const worldY = machine.position.y * gridSize + gridSize / 2
+            particlesRef.current.push({
+              x: worldX,
+              y: worldY - gridSize / 2,
+              vx: (Math.random() - 0.5) * 0.5,
+              vy: -1 - Math.random() * 0.5,
+              life: 60,
+              maxLife: 60,
+              color: machine.type === 'electric_furnace' ? '#06b6d4' : '#78716c',
+              size: 4 + Math.random() * 4
+            })
+          }
+          
+          // Tier indicator
+          if (tierIndicator) {
+            ctx.fillStyle = '#fff'
+            ctx.font = 'bold 10px Arial'
+            ctx.textAlign = 'center'
+            ctx.textBaseline = 'middle'
+            ctx.fillText(tierIndicator, gridSize / 2 - 12, -gridSize / 2 + 12)
+          }
+        } 
+        else {
           // Normal machine rendering
           ctx.fillStyle = color
           ctx.fillRect(-gridSize / 2 + 5, -gridSize / 2 + 5, gridSize - 10, gridSize - 10)
+          
+          // Draw tier indicator for upgraded machines
+          if (tierIndicator) {
+            ctx.fillStyle = '#fff'
+            ctx.font = 'bold 10px Arial'
+            ctx.textAlign = 'center'
+            ctx.textBaseline = 'middle'
+            ctx.fillText(tierIndicator, gridSize / 2 - 12, -gridSize / 2 + 12)
+          }
         }
 
         // Draw health bar
@@ -367,6 +558,18 @@ const GameCanvas = () => {
         ctx.beginPath()
         ctx.arc(x, y, 3, 0, Math.PI * 2)
         ctx.fill()
+      })
+
+      // Draw particles
+      particlesRef.current.forEach(particle => {
+        ctx.save()
+        const alpha = particle.life / particle.maxLife
+        ctx.globalAlpha = alpha
+        ctx.fillStyle = particle.color
+        ctx.beginPath()
+        ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.restore()
       })
 
       // Restore canvas state

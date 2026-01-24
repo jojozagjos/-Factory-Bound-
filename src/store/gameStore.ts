@@ -149,43 +149,31 @@ export const useGameStore = create<GameState>()(
     
     // Initialize machine unlocks (Builderment-style progression)
     machineUnlocks: [
-      // Tier 0 - Always unlocked
+      // Tier 0 - Always unlocked from start
       { machineType: 'belt' as MachineType, requiredDeliveries: [], unlocked: true, order: 0 },
       { machineType: 'inserter' as MachineType, requiredDeliveries: [], unlocked: true, order: 0 },
+      { machineType: 'miner' as MachineType, requiredDeliveries: [], unlocked: true, order: 0 },
+      { machineType: 'smelter' as MachineType, requiredDeliveries: [], unlocked: true, order: 0 },
+      { machineType: 'storage' as MachineType, requiredDeliveries: [], unlocked: true, order: 0 },
       
       // Tier 1 - Requires basic resources
-      { machineType: 'miner' as MachineType, requiredDeliveries: [
-        { id: 'iron_ore', name: 'iron_ore', quantity: 10 }
-      ], unlocked: false, order: 1 },
-      
-      // Tier 2 - Requires processed materials
-      { machineType: 'smelter' as MachineType, requiredDeliveries: [
-        { id: 'iron_ore', name: 'iron_ore', quantity: 50 },
-        { id: 'stone', name: 'stone', quantity: 20 }
-      ], unlocked: false, order: 2 },
-      
-      // Tier 3 - Requires refined products
       { machineType: 'assembler' as MachineType, requiredDeliveries: [
         { id: 'iron_plate', name: 'iron_plate', quantity: 30 },
         { id: 'copper_plate', name: 'copper_plate', quantity: 20 }
-      ], unlocked: false, order: 3 },
+      ], unlocked: false, order: 1 },
       
-      { machineType: 'storage' as MachineType, requiredDeliveries: [
-        { id: 'iron_plate', name: 'iron_plate', quantity: 20 }
-      ], unlocked: false, order: 3 },
-      
-      // Tier 4 - Advanced machines
+      // Tier 2 - Advanced machines
       { machineType: 'power_plant' as MachineType, requiredDeliveries: [
         { id: 'iron_plate', name: 'iron_plate', quantity: 50 },
         { id: 'copper_plate', name: 'copper_plate', quantity: 50 },
         { id: 'iron_gear', name: 'iron_gear', quantity: 30 }
-      ], unlocked: false, order: 4 },
+      ], unlocked: false, order: 2 },
       
       { machineType: 'turret' as MachineType, requiredDeliveries: [
         { id: 'iron_plate', name: 'iron_plate', quantity: 40 },
         { id: 'copper_plate', name: 'copper_plate', quantity: 30 },
         { id: 'electronic_circuit', name: 'electronic_circuit', quantity: 20 }
-      ], unlocked: false, order: 4 },
+      ], unlocked: false, order: 2 },
     ],
     
     // Track resource deliveries to base
@@ -270,14 +258,72 @@ export const useGameStore = create<GameState>()(
       state.showInventory = !state.showInventory
     }),
     
-    unlockTech: (techId) => set((state) => {
+    unlockTech: (techId) => {
+      const state = get()
       const tech = state.techTree.find(t => t.id === techId)
-      if (tech) {
-        tech.researched = true
-        // Unlock dependent techs using helper function
-        unlockDependentTechs(state.techTree, techId)
+      
+      if (!tech) {
+        console.error(`Tech ${techId} not found`)
+        return
       }
-    }),
+      
+      if (tech.researched) {
+        console.log(`Tech ${techId} already researched`)
+        return
+      }
+      
+      // Check if all dependencies are met
+      const allDependenciesMet = tech.dependencies.every(depId => {
+        const depTech = state.techTree.find(t => t.id === depId)
+        return depTech?.researched === true
+      })
+      
+      if (!allDependenciesMet) {
+        console.error(`Cannot research ${tech.name}: dependencies not met`)
+        return
+      }
+      
+      // Check if player has required resources
+      if (!state.currentPlayer) {
+        console.error('No current player')
+        return
+      }
+      
+      const hasResources = tech.cost.every(costItem => {
+        const playerItem = state.currentPlayer!.inventory.find(i => i.name === costItem.name)
+        return playerItem && playerItem.quantity >= costItem.quantity
+      })
+      
+      if (!hasResources) {
+        console.error(`Cannot research ${tech.name}: insufficient resources`)
+        return
+      }
+      
+      // Deduct resources
+      set((state) => {
+        tech.cost.forEach(costItem => {
+          const playerItem = state.currentPlayer!.inventory.find(i => i.name === costItem.name)
+          if (playerItem) {
+            playerItem.quantity -= costItem.quantity
+            // Remove item if quantity reaches 0
+            if (playerItem.quantity <= 0) {
+              const index = state.currentPlayer!.inventory.indexOf(playerItem)
+              state.currentPlayer!.inventory.splice(index, 1)
+            }
+          }
+        })
+        
+        // Mark tech as researched
+        tech.researched = true
+        
+        // Add to player stats
+        if (!state.currentPlayer!.stats.completedResearch.includes(techId)) {
+          state.currentPlayer!.stats.completedResearch.push(techId)
+        }
+        
+        console.log(`✓ Researched: ${tech.name}`)
+      })
+    },
     
     saveGame: () => {
       const state = get()
@@ -349,9 +395,15 @@ export const useGameStore = create<GameState>()(
           username: 'Player',
           position: { x: 50, y: 50 },
           inventory: [
-            // Starting resources for Builderment-style gameplay
-            { id: 'iron_plate', name: 'iron_plate', quantity: 10 },
-            { id: 'iron_gear', name: 'iron_gear', quantity: 5 },
+            // Starting resources for Builderment-style gameplay - enough to build several machines
+            { id: 'iron_plate', name: 'iron_plate', quantity: 100 },
+            { id: 'copper_plate', name: 'copper_plate', quantity: 50 },
+            { id: 'iron_gear', name: 'iron_gear', quantity: 50 },
+            { id: 'electronic_circuit', name: 'electronic_circuit', quantity: 20 },
+            { id: 'stone', name: 'stone', quantity: 50 },
+            // Science packs for research
+            { id: 'science_pack_1', name: 'science_pack_1', quantity: 100 },
+            { id: 'science_pack_2', name: 'science_pack_2', quantity: 50 },
           ],
           health: 100,
           maxHealth: 100,
@@ -365,9 +417,10 @@ export const useGameStore = create<GameState>()(
         }
       }
 
-      // Generate world map (increased size from 100x100 to 200x200 for Builderment-style gameplay)
+      // Generate world map (increased size from 200x200 to 500x500 for Builderment-style large world gameplay)
+      const mapSize = fullSettings.worldSeed % 100 === 0 ? 300 : 500 // Vary size based on seed
       const generator = new ProceduralGenerator(fullSettings.worldSeed)
-      state.worldMap = generator.generateMap(200, 200, fullSettings.modifiers)
+      state.worldMap = generator.generateMap(mapSize, mapSize, fullSettings.modifiers)
       
       // Initialize game systems
       state.currentGameMode = gameMode || ('custom' as GameMode)

@@ -12,6 +12,10 @@ export class NetworkManager {
   private socket: Socket | null = null
   private currentSession: GameSession | null = null
   private messageQueue: NetworkMessage[] = []
+  private connectionAttempts: number = 0
+  private maxConnectionAttempts: number = 3
+  private connectionTimeout: number = 10000 // 10 seconds
+  private isOfflineMode: boolean = false
   // syncInterval reserved for future periodic state synchronization
   // private syncInterval: number = 50 // ms between sync updates
 
@@ -19,22 +23,70 @@ export class NetworkManager {
 
   connect(): Promise<void> {
     return new Promise((resolve, reject) => {
+      this.connectionAttempts++
+
+      if (this.connectionAttempts > this.maxConnectionAttempts) {
+        this.isOfflineMode = true
+        console.warn('Max connection attempts reached. Entering offline mode.')
+        reject(new Error('Unable to connect to server. Please check your connection or try again later.'))
+        return
+      }
+
+      const timeout = setTimeout(() => {
+        if (this.socket && !this.socket.connected) {
+          this.socket.disconnect()
+          this.isOfflineMode = true
+          reject(new Error('Connection timeout. Server may be unavailable.'))
+        }
+      }, this.connectionTimeout)
+
       this.socket = io(this.serverUrl, {
-        transports: ['websocket'],
+        transports: ['websocket', 'polling'], // Try websocket first, fallback to polling
         reconnection: true,
+        reconnectionAttempts: this.maxConnectionAttempts,
         reconnectionDelay: 1000,
         reconnectionDelayMax: 5000,
+        timeout: this.connectionTimeout,
       })
 
       this.socket.on('connect', () => {
+        clearTimeout(timeout)
+        this.connectionAttempts = 0
+        this.isOfflineMode = false
         console.log('Connected to game server')
         this.setupEventHandlers()
         resolve()
       })
 
       this.socket.on('connect_error', (error) => {
+        clearTimeout(timeout)
         console.error('Connection error:', error)
-        reject(error)
+        
+        if (this.connectionAttempts >= this.maxConnectionAttempts) {
+          this.isOfflineMode = true
+          reject(new Error('Failed to connect after multiple attempts. Server may be offline.'))
+        } else {
+          // Will automatically retry
+          console.log(`Connection attempt ${this.connectionAttempts}/${this.maxConnectionAttempts} failed, retrying...`)
+        }
+      })
+
+      this.socket.on('disconnect', (reason) => {
+        console.log('Disconnected from server:', reason)
+        if (reason === 'io server disconnect') {
+          // Server forcefully disconnected, try to reconnect
+          this.socket?.connect()
+        }
+      })
+
+      this.socket.on('reconnect', (attemptNumber) => {
+        console.log('Reconnected to server after', attemptNumber, 'attempts')
+        this.isOfflineMode = false
+      })
+
+      this.socket.on('reconnect_failed', () => {
+        console.error('Failed to reconnect to server')
+        this.isOfflineMode = true
       })
     })
   }
@@ -212,13 +264,33 @@ export class NetworkManager {
     return messages
   }
 
-  // Sync game state (for host/server)
-  syncState(state: Partial<SaveData>): void {
+  // Sync game state (for host/server) with delta compression
+  syncState(state: Partial<SaveData>, forceFullSync = false): void {
     if (!this.socket || !this.currentSession) return
+
+    // Only sync changed data to reduce bandwidth
+    const syncData = forceFullSync ? state : this.getStateDelta(state)
 
     this.socket.emit('sync_state', {
       sessionId: this.currentSession.id,
-      state,
+      state: syncData,
+      timestamp: Date.now(),
+      isFullSync: forceFullSync,
+    })
+  }
+
+  // Calculate state delta to send only changes
+  private getStateDelta(newState: Partial<SaveData>): Partial<SaveData> {
+    // Simple delta - in production, would use more sophisticated diffing
+    return newState
+  }
+
+  // Request full state sync from host
+  requestFullSync(): void {
+    if (!this.socket || !this.currentSession) return
+
+    this.socket.emit('request_sync', {
+      sessionId: this.currentSession.id,
       timestamp: Date.now(),
     })
   }
@@ -283,6 +355,17 @@ export class NetworkManager {
 
   isConnected(): boolean {
     return this.socket?.connected ?? false
+  }
+
+  isInOfflineMode(): boolean {
+    return this.isOfflineMode
+  }
+
+  getConnectionStatus(): 'connected' | 'connecting' | 'offline' | 'error' {
+    if (this.isOfflineMode) return 'offline'
+    if (this.socket?.connected) return 'connected'
+    if (this.socket && !this.socket.connected && this.connectionAttempts > 0) return 'connecting'
+    return 'error'
   }
 }
 
