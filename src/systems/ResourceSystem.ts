@@ -96,6 +96,94 @@ export class ResourceSystem {
         outputs: [{ id: 'assembler_output', name: 'assembler', quantity: 1 }],
         craftingTime: 0.5,
       },
+      // Advanced components
+      {
+        id: 'advanced_circuit',
+        name: 'Advanced Circuit',
+        inputs: [
+          { id: 'electronic_circuit_input', name: 'electronic_circuit', quantity: 2 },
+          { id: 'copper_wire_input', name: 'copper_wire', quantity: 4 },
+          { id: 'plastic_input', name: 'plastic_bar', quantity: 2 },
+        ],
+        outputs: [{ id: 'adv_circuit_output', name: 'advanced_circuit', quantity: 1 }],
+        craftingTime: 6,
+      },
+      {
+        id: 'engine_unit',
+        name: 'Engine Unit',
+        inputs: [
+          { id: 'iron_gear_input', name: 'iron_gear', quantity: 1 },
+          { id: 'pipe_input', name: 'pipe', quantity: 2 },
+          { id: 'steel_plate_input', name: 'steel_plate', quantity: 1 },
+        ],
+        outputs: [{ id: 'engine_output', name: 'engine_unit', quantity: 1 }],
+        craftingTime: 10,
+      },
+      {
+        id: 'steel_plate',
+        name: 'Steel Plate',
+        inputs: [{ id: 'iron_plate_input', name: 'iron_plate', quantity: 5 }],
+        outputs: [{ id: 'steel_output', name: 'steel_plate', quantity: 1 }],
+        craftingTime: 16,
+      },
+      {
+        id: 'plastic_bar',
+        name: 'Plastic Bar',
+        inputs: [
+          { id: 'coal_input', name: 'coal', quantity: 1 },
+          { id: 'petroleum_input', name: 'petroleum_gas', quantity: 20 },
+        ],
+        outputs: [{ id: 'plastic_output', name: 'plastic_bar', quantity: 2 }],
+        craftingTime: 1,
+      },
+      {
+        id: 'sulfur',
+        name: 'Sulfur',
+        inputs: [
+          { id: 'water_input', name: 'water', quantity: 30 },
+          { id: 'petroleum_input', name: 'petroleum_gas', quantity: 30 },
+        ],
+        outputs: [{ id: 'sulfur_output', name: 'sulfur', quantity: 2 }],
+        craftingTime: 1,
+      },
+      {
+        id: 'pipe',
+        name: 'Pipe',
+        inputs: [{ id: 'iron_plate_input', name: 'iron_plate', quantity: 1 }],
+        outputs: [{ id: 'pipe_output', name: 'pipe', quantity: 1 }],
+        craftingTime: 0.5,
+      },
+      {
+        id: 'grenade',
+        name: 'Grenade',
+        inputs: [
+          { id: 'iron_plate_input', name: 'iron_plate', quantity: 5 },
+          { id: 'coal_input', name: 'coal', quantity: 10 },
+        ],
+        outputs: [{ id: 'grenade_output', name: 'grenade', quantity: 1 }],
+        craftingTime: 8,
+      },
+      {
+        id: 'rail',
+        name: 'Rail',
+        inputs: [
+          { id: 'stone_input', name: 'stone', quantity: 1 },
+          { id: 'iron_plate_input', name: 'iron_plate', quantity: 1 },
+          { id: 'steel_plate_input', name: 'steel_plate', quantity: 1 },
+        ],
+        outputs: [{ id: 'rail_output', name: 'rail', quantity: 2 }],
+        craftingTime: 0.5,
+      },
+      {
+        id: 'productivity_module',
+        name: 'Productivity Module',
+        inputs: [
+          { id: 'advanced_circuit_input', name: 'advanced_circuit', quantity: 5 },
+          { id: 'electronic_circuit_input', name: 'electronic_circuit', quantity: 5 },
+        ],
+        outputs: [{ id: 'prod_module_output', name: 'productivity_module', quantity: 1 }],
+        craftingTime: 15,
+      },
       // Science packs
       {
         id: 'science_pack_1',
@@ -132,8 +220,8 @@ export class ResourceSystem {
         id: 'science_pack_4',
         name: 'Chemical Science Pack (Purple)',
         inputs: [
-          { id: 'engine_input', name: 'engine_unit', quantity: 2 },
-          { id: 'adv_circuit_input', name: 'advanced_circuit', quantity: 3 },
+          { id: 'engine_input', name: 'engine_unit', quantity: 1 },
+          { id: 'adv_circuit_input', name: 'advanced_circuit', quantity: 2 },
           { id: 'sulfur_input', name: 'sulfur', quantity: 1 },
         ],
         outputs: [{ id: 'science_4_output', name: 'science_pack_4', quantity: 2 }],
@@ -143,8 +231,8 @@ export class ResourceSystem {
         id: 'science_pack_5',
         name: 'Production Science Pack (Yellow)',
         inputs: [
-          { id: 'rail_input', name: 'rail', quantity: 30 },
-          { id: 'electric_furnace_input', name: 'electric_furnace', quantity: 1 },
+          { id: 'rail_input', name: 'rail', quantity: 10 },
+          { id: 'steel_plate_input', name: 'steel_plate', quantity: 5 },
           { id: 'productivity_module_input', name: 'productivity_module', quantity: 1 },
         ],
         outputs: [{ id: 'science_5_output', name: 'science_pack_5', quantity: 3 }],
