@@ -414,9 +414,10 @@ export const useGameStore = create<GameState>()(
         }
       }
 
-      // Generate world map (increased size from 100x100 to 200x200 for Builderment-style gameplay)
+      // Generate world map (increased size from 200x200 to 500x500 for Builderment-style large world gameplay)
+      const mapSize = fullSettings.worldSeed % 100 === 0 ? 300 : 500 // Vary size based on seed
       const generator = new ProceduralGenerator(fullSettings.worldSeed)
-      state.worldMap = generator.generateMap(200, 200, fullSettings.modifiers)
+      state.worldMap = generator.generateMap(mapSize, mapSize, fullSettings.modifiers)
       
       // Initialize game systems
       state.currentGameMode = gameMode || ('custom' as GameMode)

@@ -11,14 +11,44 @@ export interface Vector2D extends Position {
 
 // Building/Machine types
 export enum MachineType {
+  // Basic Production
   MINER = 'miner',
-  ASSEMBLER = 'assembler',
+  MINER_T2 = 'miner_t2',
+  MINER_T3 = 'miner_t3',
+  
+  // Smelting
   SMELTER = 'smelter',
+  STEEL_FURNACE = 'steel_furnace',
+  ELECTRIC_FURNACE = 'electric_furnace',
+  
+  // Assembly
+  ASSEMBLER = 'assembler',
+  ASSEMBLER_T2 = 'assembler_t2',
+  ASSEMBLER_T3 = 'assembler_t3',
+  
+  // Logistics
   BELT = 'belt',
+  FAST_BELT = 'fast_belt',
+  EXPRESS_BELT = 'express_belt',
   INSERTER = 'inserter',
+  FAST_INSERTER = 'fast_inserter',
+  STACK_INSERTER = 'stack_inserter',
+  SPLITTER = 'splitter',
+  UNDERGROUND_BELT = 'underground_belt',
+  
+  // Power
   POWER_PLANT = 'power_plant',
+  SOLAR_PANEL = 'solar_panel',
+  ACCUMULATOR = 'accumulator',
+  
+  // Combat
   TURRET = 'turret',
+  LASER_TURRET = 'laser_turret',
+  WALL = 'wall',
+  
+  // Storage & Special
   STORAGE = 'storage',
+  RESEARCH_LAB = 'research_lab',
   BASE = 'base', // Player's main base
 }
 
@@ -184,6 +214,8 @@ export interface TechNode {
   dependencies: string[]
   unlocks: string[]
   researched: boolean
+  researchProgress?: number // 0-100, for research in progress
+  researchTime?: number // Time in seconds to complete research
 }
 
 export enum TechParadigm {

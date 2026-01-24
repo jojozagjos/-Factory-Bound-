@@ -40,6 +40,7 @@ export class ProceduralGenerator {
 
   private generateTile(x: number, y: number, centerX: number, centerY: number, islandRadius: number): WorldTile {
     const noise = this.noise2D(x / 50, y / 50)
+    const resourceNoise = this.noise2D(x / 20, y / 20) // Smaller scale for resource clustering
     
     // Calculate distance from center for island shape
     const dx = x - centerX
@@ -68,18 +69,40 @@ export class ProceduralGenerator {
       type = 'grass'
     }
 
-    // Add resources only on land tiles
-    if (type === 'stone' && this.rng() > 0.7) {
-      resource = {
-        type: 'iron_ore',
-        amount: Math.floor(100 + this.rng() * 400),
-        richness: this.rng(),
+    // Add resources with better clustering (Builderment-style ore patches)
+    // Resources only spawn on land tiles and cluster together
+    if (type === 'stone' || type === 'grass') {
+      // Iron ore patches - common, found on stone/grass
+      if (resourceNoise > 0.6 && this.rng() > 0.5) {
+        resource = {
+          type: 'iron_ore',
+          amount: Math.floor(200 + this.rng() * 600),
+          richness: Math.min(1, Math.max(0.3, resourceNoise)),
+        }
       }
-    } else if (type === 'grass' && this.rng() > 0.85) {
-      resource = {
-        type: 'copper_ore',
-        amount: Math.floor(100 + this.rng() * 400),
-        richness: this.rng(),
+      // Copper ore patches - less common, found on grass
+      else if (type === 'grass' && resourceNoise < -0.6 && this.rng() > 0.5) {
+        resource = {
+          type: 'copper_ore',
+          amount: Math.floor(150 + this.rng() * 500),
+          richness: Math.min(1, Math.max(0.3, -resourceNoise)),
+        }
+      }
+      // Coal patches - found on grass, medium rarity
+      else if (type === 'grass' && resourceNoise > 0.4 && resourceNoise < 0.6 && this.rng() > 0.7) {
+        resource = {
+          type: 'coal',
+          amount: Math.floor(100 + this.rng() * 400),
+          richness: Math.min(1, Math.max(0.2, resourceNoise - 0.4)),
+        }
+      }
+      // Stone patches - on grass, common
+      else if (type === 'grass' && resourceNoise < -0.4 && resourceNoise > -0.6 && this.rng() > 0.6) {
+        resource = {
+          type: 'stone',
+          amount: Math.floor(150 + this.rng() * 500),
+          richness: Math.min(1, Math.max(0.3, -resourceNoise + 0.4)),
+        }
       }
     }
 

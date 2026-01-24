@@ -187,6 +187,26 @@ const GameCanvas = () => {
                 ctx.beginPath()
                 ctx.arc(0, 0, resourceSize - 3, 0, Math.PI * 2)
                 ctx.fill()
+              } else if (tile.resource.type === 'coal') {
+                // Coal - black
+                ctx.fillStyle = '#000000'
+                ctx.beginPath()
+                ctx.arc(0, 0, resourceSize, 0, Math.PI * 2)
+                ctx.fill()
+                ctx.fillStyle = '#27272a'
+                ctx.beginPath()
+                ctx.arc(0, 0, resourceSize - 3, 0, Math.PI * 2)
+                ctx.fill()
+              } else if (tile.resource.type === 'stone') {
+                // Stone - gray/brown
+                ctx.fillStyle = '#57534e'
+                ctx.beginPath()
+                ctx.arc(0, 0, resourceSize, 0, Math.PI * 2)
+                ctx.fill()
+                ctx.fillStyle = '#78716c'
+                ctx.beginPath()
+                ctx.arc(0, 0, resourceSize - 3, 0, Math.PI * 2)
+                ctx.fill()
               }
               
               ctx.restore()
