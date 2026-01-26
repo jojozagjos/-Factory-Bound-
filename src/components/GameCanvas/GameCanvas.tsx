@@ -48,19 +48,8 @@ const GameCanvas = () => {
   const lod4MapCacheRef = useRef<HTMLCanvasElement | null>(null)
   const lod2MachineCacheRef = useRef<HTMLCanvasElement | null>(null)
   const lod4MachineCacheRef = useRef<HTMLCanvasElement | null>(null)
-  // LOD blending state
-  const lastCacheIdRef = useRef<number>(0)
-  const lastCacheCanvasRef = useRef<HTMLCanvasElement | null>(null)
-  const prevCacheCanvasRef = useRef<HTMLCanvasElement | null>(null)
-  const lodChangeTimeRef = useRef<number>(0)
-  const BLEND_DURATION = 200 // ms
-
-  const lastMachineCacheIdRef = useRef<number>(0)
-  const lastMachineCacheCanvasRef = useRef<HTMLCanvasElement | null>(null)
-  const prevMachineCacheCanvasRef = useRef<HTMLCanvasElement | null>(null)
-  const machineLodChangeTimeRef = useRef<number>(0)
-  const lastDebugLogRef = useRef<number>(0)
   const lastFrameRef = useRef<number>(0)
+  const lodBlendAlpha = useRef<number>(1)
 
   // Update camera position when worldMap loads
   useEffect(() => {
@@ -328,11 +317,12 @@ const GameCanvas = () => {
 
     let animationFrameId: number
 
-      // Simple render loop
-    const render = () => {
       const LOD1_ZOOM = 0.6
       const LOD2_ZOOM = 0.85
       const LOD3_ZOOM = 1.0
+
+      // Simple render loop
+    const render = () => {
       // Frame rate cap depending on zoom (60fps normally, 30fps when using LOD caches)
       const now = performance.now()
       const delta = now - (lastFrameRef.current || now)
@@ -345,6 +335,11 @@ const GameCanvas = () => {
 
       // Update animation time for belt animations
       animationTimeRef.current += delta / 1000
+
+      // Smooth LOD blending: fade in when entering LOD, fade out when leaving
+      const targetAlpha = cameraRef.current.zoom <= LOD3_ZOOM ? 1 : 0
+      const blendSpeed = 0.1
+      lodBlendAlpha.current += (targetAlpha - lodBlendAlpha.current) * blendSpeed
 
       const skipEffects = cameraRef.current.zoom <= LOD3_ZOOM
       // Update particles (skip heavy updates when zoomed out)
@@ -363,15 +358,6 @@ const GameCanvas = () => {
       ctx.setTransform(1, 0, 0, 1, 0, 0)
       ctx.fillStyle = '#0a0a0a'
       ctx.fillRect(0, 0, canvas.width, canvas.height)
-      // Small on-screen debug overlay so user can see render status without DevTools
-      try {
-        ctx.fillStyle = '#ffffff'
-        ctx.font = '14px Arial'
-        const statusText = `map:${worldMap ? 'yes' : 'no'} fullCache:${!!fullMapCacheRef.current} lod2:${!!lod2MapCacheRef.current} lod4:${!!lod4MapCacheRef.current}`
-        ctx.fillText(statusText, 10, 18)
-      } catch (e) {
-        // ignore
-      }
       ctx.restore()
 
       // Apply camera transform
@@ -398,89 +384,44 @@ const GameCanvas = () => {
         visibleBottom = Math.ceil((cam.y + canvas.height / (2 * cam.zoom)) / gridSize) + 1
 
         // Choose appropriate LOD cache based on zoom
-        const chosenCacheId = cam.zoom <= LOD1_ZOOM ? 1 : cam.zoom <= LOD2_ZOOM ? 2 : cam.zoom <= LOD3_ZOOM ? 3 : 0
-        const cache = (chosenCacheId === 1 ? fullMapCacheRef.current : chosenCacheId === 2 ? lod2MapCacheRef.current : chosenCacheId === 3 ? lod4MapCacheRef.current : null)
-
-        const chosenMachineCacheId = cam.zoom <= LOD1_ZOOM ? 1 : cam.zoom <= LOD2_ZOOM ? 2 : cam.zoom <= LOD3_ZOOM ? 3 : 0
-        const machineCache = (chosenMachineCacheId === 1 ? machineCacheRef.current : chosenMachineCacheId === 2 ? lod2MachineCacheRef.current : chosenMachineCacheId === 3 ? lod4MachineCacheRef.current : null)
-
-        // Detect cache switch and start blend
-        if (chosenCacheId !== lastCacheIdRef.current) {
-          prevCacheCanvasRef.current = lastCacheCanvasRef.current
-          lastCacheCanvasRef.current = cache
-          lastCacheIdRef.current = chosenCacheId
-          lodChangeTimeRef.current = now
-        }
-        // Debug: once per second, print cache/worldMap status to browser console
-        if (now - lastDebugLogRef.current > 1000) {
-          lastDebugLogRef.current = now
-          try {
-            console.debug('GameCanvas debug', {
-              worldMap: !!worldMap,
-              chosenCacheId,
-              cachePresent: !!cache,
-              fullMapCachePresent: !!fullMapCacheRef.current,
-              chosenMachineCacheId,
-              machineCachePresent: !!machineCache,
-              camZoom: cam.zoom,
-            })
-          } catch (e) {
-            // ignore
-          }
-        }
-        if (chosenMachineCacheId !== lastMachineCacheIdRef.current) {
-          prevMachineCacheCanvasRef.current = lastMachineCacheCanvasRef.current
-          lastMachineCacheCanvasRef.current = machineCache
-          lastMachineCacheIdRef.current = chosenMachineCacheId
-          machineLodChangeTimeRef.current = now
-        }
-        let didDrawMap = false
-        if (cache) {
+        const cache = (cam.zoom <= LOD1_ZOOM
+          ? fullMapCacheRef.current
+          : cam.zoom <= LOD2_ZOOM
+            ? lod2MapCacheRef.current
+            : cam.zoom <= LOD3_ZOOM
+              ? lod4MapCacheRef.current
+              : null)
+        const machineCache = (cam.zoom <= LOD1_ZOOM
+          ? machineCacheRef.current
+          : cam.zoom <= LOD2_ZOOM
+            ? lod2MachineCacheRef.current
+            : cam.zoom <= LOD3_ZOOM
+              ? lod4MachineCacheRef.current
+              : null)
+        if (cache && lodBlendAlpha.current > 0.01) {
           ctx.imageSmoothingEnabled = false
           const worldPxW = worldMap.width * gridSize
           const worldPxH = worldMap.height * gridSize
+          
+          // Apply smooth blending opacity
+          ctx.globalAlpha = lodBlendAlpha.current
+          ctx.drawImage(cache, 0, 0, cache.width, cache.height, 0, 0, worldPxW, worldPxH)
 
-          // Blend world caches when transitioning
-          const elapsed = now - lodChangeTimeRef.current
-          const t = Math.min(1, Math.max(0, elapsed / BLEND_DURATION))
-          const prev = prevCacheCanvasRef.current
-          if (prev && t < 1) {
-            ctx.globalAlpha = 1 - t
-            ctx.drawImage(prev, 0, 0, prev.width, prev.height, 0, 0, worldPxW, worldPxH)
-            ctx.globalAlpha = t
-            ctx.drawImage(lastCacheCanvasRef.current || cache, 0, 0, (lastCacheCanvasRef.current || cache)!.width, (lastCacheCanvasRef.current || cache)!.height, 0, 0, worldPxW, worldPxH)
-            ctx.globalAlpha = 1
-          } else {
-            ctx.drawImage(cache, 0, 0, cache.width, cache.height, 0, 0, worldPxW, worldPxH)
-          }
-          didDrawMap = true
-
-          // Fast path: draw simplified machine layer (1px markers stretched) with blending
-          const prevMachine = prevMachineCacheCanvasRef.current
-          const mElapsed = now - machineLodChangeTimeRef.current
-          const mt = Math.min(1, Math.max(0, mElapsed / BLEND_DURATION))
+          // Fast path: draw simplified machine layer (1px markers stretched)
           if (machineCache) {
-            if (prevMachine && mt < 1) {
-              ctx.globalAlpha = 1 - mt
-              ctx.drawImage(prevMachine, 0, 0, prevMachine.width, prevMachine.height, 0, 0, worldPxW, worldPxH)
-              ctx.globalAlpha = mt
-              ctx.drawImage(lastMachineCacheCanvasRef.current || machineCache, 0, 0, (lastMachineCacheCanvasRef.current || machineCache)!.width, (lastMachineCacheCanvasRef.current || machineCache)!.height, 0, 0, worldPxW, worldPxH)
-              ctx.globalAlpha = 1
-            } else {
-              ctx.globalAlpha = 0.95
-              ctx.drawImage(machineCache, 0, 0, machineCache.width, machineCache.height, 0, 0, worldPxW, worldPxH)
-              ctx.globalAlpha = 1
-            }
+            ctx.globalAlpha = 0.95 * lodBlendAlpha.current
+            ctx.drawImage(machineCache, 0, 0, machineCache.width, machineCache.height, 0, 0, worldPxW, worldPxH)
           }
-        } else {
+          ctx.globalAlpha = 1
+        }
+        
+        // Draw full-detail tiles when not using cache or blending out
+        if (!cache || lodBlendAlpha.current < 0.99) {
           // Draw only visible tiles
-          let drewAnyTile = false
           for (let tileY = Math.max(0, visibleTop); tileY < Math.min(worldMap.height, visibleBottom); tileY++) {
             for (let tileX = Math.max(0, visibleLeft); tileX < Math.min(worldMap.width, visibleRight); tileX++) {
               const tile = worldMap.tiles.get(`${tileX},${tileY}`)
               if (!tile) continue
-
-              drewAnyTile = true
 
               const screenX = tile.x * gridSize
               const screenY = tile.y * gridSize
@@ -592,20 +533,11 @@ const GameCanvas = () => {
               }
             }
           }
-          didDrawMap = didDrawMap || drewAnyTile
-        }
-        // Defensive fallback: if nothing was drawn (cache missing or tile loop empty), draw fullMapCache if available or a simple placeholder
-        if (!didDrawMap) {
-          const fallback = fullMapCacheRef.current
-          if (fallback) {
-            ctx.imageSmoothingEnabled = false
-            const worldPxW = worldMap.width * gridSize
-            const worldPxH = worldMap.height * gridSize
-            ctx.drawImage(fallback, 0, 0, fallback.width, fallback.height, 0, 0, worldPxW, worldPxH)
-          } else {
-            // Simple visible placeholder
-            ctx.fillStyle = '#123456'
-            ctx.fillRect(0, 0, Math.min(worldMap.width * gridSize, canvas.width), Math.min(worldMap.height * gridSize, canvas.height))
+          
+          // Apply inverse blending when transitioning to LOD
+          if (cache && lodBlendAlpha.current < 0.99 && lodBlendAlpha.current > 0.01) {
+            ctx.globalAlpha = 1 - lodBlendAlpha.current
+            ctx.globalAlpha = 1
           }
         }
       }
