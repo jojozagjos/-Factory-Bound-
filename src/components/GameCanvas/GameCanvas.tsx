@@ -363,6 +363,15 @@ const GameCanvas = () => {
       ctx.setTransform(1, 0, 0, 1, 0, 0)
       ctx.fillStyle = '#0a0a0a'
       ctx.fillRect(0, 0, canvas.width, canvas.height)
+      // Small on-screen debug overlay so user can see render status without DevTools
+      try {
+        ctx.fillStyle = '#ffffff'
+        ctx.font = '14px Arial'
+        const statusText = `map:${worldMap ? 'yes' : 'no'} fullCache:${!!fullMapCacheRef.current} lod2:${!!lod2MapCacheRef.current} lod4:${!!lod4MapCacheRef.current}`
+        ctx.fillText(statusText, 10, 18)
+      } catch (e) {
+        // ignore
+      }
       ctx.restore()
 
       // Apply camera transform
