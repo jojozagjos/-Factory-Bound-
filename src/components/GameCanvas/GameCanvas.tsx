@@ -59,6 +59,7 @@ const GameCanvas = () => {
   const lastMachineCacheCanvasRef = useRef<HTMLCanvasElement | null>(null)
   const prevMachineCacheCanvasRef = useRef<HTMLCanvasElement | null>(null)
   const machineLodChangeTimeRef = useRef<number>(0)
+  const lastDebugLogRef = useRef<number>(0)
   const lastFrameRef = useRef<number>(0)
 
   // Update camera position when worldMap loads
@@ -400,6 +401,23 @@ const GameCanvas = () => {
           lastCacheCanvasRef.current = cache
           lastCacheIdRef.current = chosenCacheId
           lodChangeTimeRef.current = now
+        }
+        // Debug: once per second, print cache/worldMap status to browser console
+        if (now - lastDebugLogRef.current > 1000) {
+          lastDebugLogRef.current = now
+          try {
+            console.debug('GameCanvas debug', {
+              worldMap: !!worldMap,
+              chosenCacheId,
+              cachePresent: !!cache,
+              fullMapCachePresent: !!fullMapCacheRef.current,
+              chosenMachineCacheId,
+              machineCachePresent: !!machineCache,
+              camZoom: cam.zoom,
+            })
+          } catch (e) {
+            // ignore
+          }
         }
         if (chosenMachineCacheId !== lastMachineCacheIdRef.current) {
           prevMachineCacheCanvasRef.current = lastMachineCacheCanvasRef.current
