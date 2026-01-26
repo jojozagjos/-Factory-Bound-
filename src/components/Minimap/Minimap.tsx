@@ -91,10 +91,18 @@ const Minimap = ({ width = 200, height = 200 }: MinimapProps) => {
     const tiles = Array.from(worldMap.tiles.values())
     if (tiles.length === 0) return
 
-    const minX = Math.min(...tiles.map(t => t.x))
-    const maxX = Math.max(...tiles.map(t => t.x))
-    const minY = Math.min(...tiles.map(t => t.y))
-    const maxY = Math.max(...tiles.map(t => t.y))
+    // Compute bounds without spreading huge arrays into Math.min/Math.max
+    let minX = Infinity
+    let maxX = -Infinity
+    let minY = Infinity
+    let maxY = -Infinity
+    for (let i = 0; i < tiles.length; i++) {
+      const t = tiles[i]
+      if (t.x < minX) minX = t.x
+      if (t.x > maxX) maxX = t.x
+      if (t.y < minY) minY = t.y
+      if (t.y > maxY) maxY = t.y
+    }
 
     // Include inclusive tile extents (+1) so edges render correctly
     const mapWidth = maxX - minX + 1
@@ -143,7 +151,16 @@ const Minimap = ({ width = 200, height = 200 }: MinimapProps) => {
       if (tile.resource) {
         const x = toMinimapX(tile.x)
         const y = toMinimapY(tile.y)
-        ctx.fillStyle = tile.resource.type === 'iron' ? '#94a3b8' : '#f97316'
+        // Map resource types to colors
+        let resColor = '#94a3b8'
+        switch (tile.resource.type) {
+          case 'iron_ore': resColor = '#94a3b8'; break
+          case 'copper_ore': resColor = '#f97316'; break
+          case 'coal': resColor = '#27272a'; break
+          case 'stone': resColor = '#78716c'; break
+          default: resColor = '#a1a1aa'
+        }
+        ctx.fillStyle = resColor
         ctx.fillRect(x, y, Math.max(2, scale), Math.max(2, scale))
       }
     })
@@ -214,6 +231,18 @@ const Minimap = ({ width = 200, height = 200 }: MinimapProps) => {
         <div className="legend-item">
           <span className="legend-color" style={{ backgroundColor: '#dc2626' }} />
           <span>Enemies</span>
+        </div>
+        <div className="legend-item">
+          <span className="legend-color" style={{ backgroundColor: '#94a3b8' }} />
+          <span>Iron Ore</span>
+        </div>
+        <div className="legend-item">
+          <span className="legend-color" style={{ backgroundColor: '#f97316' }} />
+          <span>Copper Ore</span>
+        </div>
+        <div className="legend-item">
+          <span className="legend-color" style={{ backgroundColor: '#27272a' }} />
+          <span>Coal</span>
         </div>
       </div>
       <div className="minimap-controls">

@@ -16,5 +16,27 @@ export default defineConfig({
   build: {
     target: 'esnext',
     sourcemap: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            return 'vendor'
+          }
+          if (id.includes('/src/engine/')) {
+            return 'engine'
+          }
+          if (id.includes('/src/components/NodeEditor/')) {
+            return 'node-editor'
+          }
+          if (id.includes('/src/components/NewGameScreen/')) {
+            return 'new-game'
+          }
+          if (id.includes('/src/components/GameCanvas/')) {
+            return 'canvas'
+          }
+          return undefined
+        }
+      }
+    }
   },
 })

@@ -3,23 +3,50 @@ import type { WorldMap, WorldTile, WorldModifier } from '../../types/game'
 
 export class ProceduralGenerator {
   private rng: seedrandom.PRNG
+  private perm: number[]
 
   constructor(seed: number) {
     this.rng = seedrandom(seed.toString())
+    // Create a seeded permutation table (0..255) shuffled by the seeded RNG
+    const p: number[] = Array.from({ length: 256 }, (_, i) => i)
+    for (let i = p.length - 1; i > 0; i--) {
+      const j = Math.floor(this.rng() * (i + 1))
+      const tmp = p[i]
+      p[i] = p[j]
+      p[j] = tmp
+    }
+    // Duplicate to avoid overflow in noise lookup
+    this.perm = new Array(512)
+    for (let i = 0; i < 512; i++) this.perm[i] = p[i & 255]
   }
 
   generateMap(width: number, height: number, modifiers: WorldModifier[] = []): WorldMap {
     const tiles = new Map<string, WorldTile>()
     
-    // Calculate center of the map for island generation
-    const centerX = width / 2
-    const centerY = height / 2
-    const islandRadius = Math.min(width, height) * 0.4 // Island takes up 80% of map diameter
-    
-    // Generate base terrain using Perlin-like noise with island shape
+    // Generate base terrain using fractal noise (FBM) and an island mask
+    const centerX = (width - 1) / 2
+    const centerY = (height - 1) / 2
+    const maxDist = Math.sqrt(centerX * centerX + centerY * centerY)
+
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
-        const tile = this.generateTile(x, y, centerX, centerY, islandRadius)
+        // compute elevation using FBM (fractal brownian motion)
+        const nx = x / Math.max(width, height)
+        const ny = y / Math.max(width, height)
+        const elevation = this.fbm(nx * 3, ny * 3, 5)
+
+        // radial falloff for island shape, modulated by a secondary noise so it's not a perfect circle
+        const dx = x - centerX
+        const dy = y - centerY
+        const dist = Math.sqrt(dx * dx + dy * dy)
+        const dNorm = dist / maxDist // 0=center, 1=edge
+        const edgeNoise = this.fbm(nx * 1.5 + 10, ny * 1.5 + 10, 3) * 0.5
+        const islandMask = Math.pow(dNorm, 1.6) * (0.8 + 0.6 * edgeNoise)
+
+        // final value: elevation minus mask -> negative = water, positive = land
+        const value = elevation - islandMask
+
+        const tile = this.generateTileFromValue(x, y, value)
         tiles.set(`${x},${y}`, tile)
       }
     }
@@ -38,71 +65,62 @@ export class ProceduralGenerator {
     }
   }
 
-  private generateTile(x: number, y: number, centerX: number, centerY: number, islandRadius: number): WorldTile {
-    const noise = this.noise2D(x / 50, y / 50)
-    const resourceNoise = this.noise2D(x / 20, y / 20) // Smaller scale for resource clustering
-    
-    // Calculate distance from center for island shape
-    const dx = x - centerX
-    const dy = y - centerY
-    const distanceFromCenter = Math.sqrt(dx * dx + dy * dy)
-    
-    // Create island falloff (smooth transition from land to water at edges)
-    const islandFalloff = Math.max(0, 1 - (distanceFromCenter / islandRadius))
-    const islandNoise = noise * islandFalloff
-    
+  // Fractal Brownian Motion - sum of octaves of noise2D
+  private fbm(x: number, y: number, octaves = 4, lacunarity = 2, gain = 0.5): number {
+    let amp = 1
+    let freq = 1
+    let sum = 0
+    let max = 0
+    for (let i = 0; i < octaves; i++) {
+      sum += amp * this.noise2D(x * freq, y * freq)
+      max += amp
+      amp *= gain
+      freq *= lacunarity
+    }
+    return sum / max
+  }
+
+  // Create tile type & resources based on a combined elevation value
+  private generateTileFromValue(x: number, y: number, value: number): WorldTile {
     let type: WorldTile['type'] = 'grass'
     let resource = undefined
 
-    // Determine tile type based on modified noise
-    if (islandFalloff < 0.1 || islandNoise < -0.2) {
-      // Far from center or very low noise = water
+    // thresholds tuned for island appearance
+    if (value < -0.05) {
       type = 'water'
-    } else if (islandNoise < 0) {
-      // Transition zone = sand (beach)
+    } else if (value < 0) {
       type = 'sand'
-    } else if (islandNoise > 0.5) {
-      // High elevation = stone (mountains/hills)
+    } else if (value > 0.55) {
       type = 'stone'
     } else {
-      // Normal elevation = grass
       type = 'grass'
     }
 
-    // Add resources with better clustering (Builderment-style ore patches)
-    // Resources only spawn on land tiles and cluster together
-    if (type === 'stone' || type === 'grass') {
-      // Iron ore patches - common, found on stone/grass
-      if (resourceNoise > 0.6 && this.rng() > 0.5) {
-        resource = {
-          type: 'iron_ore',
-          amount: Math.floor(200 + this.rng() * 600),
-          richness: Math.min(1, Math.max(0.3, resourceNoise)),
-        }
+    // resource clustering using another FBM and seeded RNG
+    const resourceNoise = this.fbm(x / 20, y / 20, 3)
+    if ((type === 'stone' || type === 'grass') && this.rng() > 0.6 && resourceNoise > 0.45) {
+      resource = {
+        type: 'iron_ore',
+        amount: Math.floor(150 + this.rng() * 600),
+        richness: Math.min(1, Math.max(0.3, resourceNoise)),
       }
-      // Copper ore patches - less common, found on grass
-      else if (type === 'grass' && resourceNoise < -0.6 && this.rng() > 0.5) {
-        resource = {
-          type: 'copper_ore',
-          amount: Math.floor(150 + this.rng() * 500),
-          richness: Math.min(1, Math.max(0.3, -resourceNoise)),
-        }
+    } else if (type === 'grass' && this.rng() > 0.75 && resourceNoise < -0.45) {
+      resource = {
+        type: 'copper_ore',
+        amount: Math.floor(120 + this.rng() * 500),
+        richness: Math.min(1, Math.max(0.3, -resourceNoise)),
       }
-      // Coal patches - found on grass, medium rarity
-      else if (type === 'grass' && resourceNoise > 0.4 && resourceNoise < 0.6 && this.rng() > 0.7) {
-        resource = {
-          type: 'coal',
-          amount: Math.floor(100 + this.rng() * 400),
-          richness: Math.min(1, Math.max(0.2, resourceNoise - 0.4)),
-        }
+    } else if (type === 'grass' && this.rng() > 0.85 && resourceNoise > 0.35 && resourceNoise < 0.45) {
+      resource = {
+        type: 'coal',
+        amount: Math.floor(80 + this.rng() * 300),
+        richness: Math.min(1, Math.max(0.2, resourceNoise - 0.35)),
       }
-      // Stone patches - on grass, common
-      else if (type === 'grass' && resourceNoise < -0.4 && resourceNoise > -0.6 && this.rng() > 0.6) {
-        resource = {
-          type: 'stone',
-          amount: Math.floor(150 + this.rng() * 500),
-          richness: Math.min(1, Math.max(0.3, -resourceNoise + 0.4)),
-        }
+    } else if (type === 'grass' && this.rng() > 0.8 && resourceNoise < -0.35 && resourceNoise > -0.6) {
+      resource = {
+        type: 'stone',
+        amount: Math.floor(100 + this.rng() * 400),
+        richness: Math.min(1, Math.max(0.3, -resourceNoise + 0.35)),
       }
     }
 
@@ -148,9 +166,8 @@ export class ProceduralGenerator {
   }
 
   private hash(i: number): number {
-    // Use the input value to generate deterministic hash
-    const x = Math.sin(i) * 10000
-    return Math.floor((x - Math.floor(x)) * 256) & 255
+    // Use the seeded permutation table for deterministic, seed-dependent hashing
+    return this.perm[i & 255]
   }
 
   private applyModifier(tiles: Map<string, WorldTile>, modifier: WorldModifier): void {

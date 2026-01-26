@@ -71,9 +71,17 @@ function App() {
   // Listen for tutorial completion
   useEffect(() => {
     const handleTutorialComplete = () => {
-      handleReturnToMenu()
+      // Only return to menu when tutorial completes outside of an active game.
+      if (gameState !== 'game') {
+        handleReturnToMenu()
+      } else {
+        // If tutorial finished while in-game, just ensure tutorial store is marked complete
+        // and keep the player in the running session.
+        // (No action needed here because tutorial store already updates.)
+        console.log('Tutorial completed while in-game; not returning to menu')
+      }
     }
-    
+
     window.addEventListener('tutorialComplete', handleTutorialComplete)
     return () => window.removeEventListener('tutorialComplete', handleTutorialComplete)
   }, [])

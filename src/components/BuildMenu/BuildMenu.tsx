@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { MachineType } from '../../types/game'
+import { useGameStore } from '../../store/gameStore'
 import { BuildingSystem } from '../../systems/BuildingSystem'
 import './BuildMenu.css'
 
@@ -16,6 +17,11 @@ interface BuildingCategory {
 
 const BuildMenu = ({ onClose, onSelectBuilding }: BuildMenuProps) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('logistics')
+  const { isMachineUnlocked, recentUnlocks, markUnlockSeen } = useGameStore(state => ({
+    isMachineUnlocked: state.isMachineUnlocked,
+    recentUnlocks: state.recentUnlocks,
+    markUnlockSeen: state.markUnlockSeen,
+  }))
   const buildingSystem = new BuildingSystem()
 
   const categories: BuildingCategory[] = [
@@ -41,7 +47,7 @@ const BuildMenu = ({ onClose, onSelectBuilding }: BuildMenuProps) => {
     },
   ]
 
-  const buildingIcons: Record<MachineType, string> = {
+  const buildingIcons: Partial<Record<MachineType, string>> = {
     belt: '↔️',
     inserter: '↪️',
     storage: '📦',
@@ -53,7 +59,7 @@ const BuildMenu = ({ onClose, onSelectBuilding }: BuildMenuProps) => {
     base: '🏭',
   }
 
-  const buildingNames: Record<MachineType, string> = {
+  const buildingNames: Partial<Record<MachineType, string>> = {
     belt: 'Transport Belt',
     inserter: 'Inserter',
     storage: 'Storage Chest',
@@ -68,6 +74,9 @@ const BuildMenu = ({ onClose, onSelectBuilding }: BuildMenuProps) => {
   const currentCategory = categories.find(c => c.name === selectedCategory)
 
   const handleSelectBuilding = (type: MachineType) => {
+    if (recentUnlocks.includes(type)) {
+      markUnlockSeen(type)
+    }
     // Emit custom event to set building mode on canvas
     window.dispatchEvent(new CustomEvent('setBuildingMode', { detail: type }))
     onSelectBuilding(type)
@@ -105,14 +114,17 @@ const BuildMenu = ({ onClose, onSelectBuilding }: BuildMenuProps) => {
           <div className="build-items">
             {currentCategory?.buildings.map(buildingType => {
               const cost = buildingSystem.getBuildingCost(buildingType)
-              const isLocked = cost?.requiredTech !== undefined
+              const isUnlocked = isMachineUnlocked(buildingType)
+              const isLocked = !isUnlocked || cost?.requiredTech !== undefined
+              const isNewUnlock = isUnlocked && recentUnlocks.includes(buildingType)
 
               return (
                 <div
                   key={buildingType}
-                  className={`build-item ${isLocked ? 'locked' : ''}`}
+                  className={`build-item ${isLocked ? 'locked' : ''} ${isNewUnlock ? 'new' : ''}`}
                   onClick={() => !isLocked && handleSelectBuilding(buildingType)}
                 >
+                  {isNewUnlock && <span className="new-badge">New</span>}
                   <div className="build-item-icon">
                     {buildingIcons[buildingType]}
                   </div>
@@ -127,7 +139,7 @@ const BuildMenu = ({ onClose, onSelectBuilding }: BuildMenuProps) => {
                     </div>
                     {isLocked && (
                       <div className="locked-badge">
-                        🔒 Requires: {cost.requiredTech}
+                        🔒 {cost?.requiredTech ? `Requires: ${cost.requiredTech}` : 'Deliver resources to unlock'}
                       </div>
                     )}
                   </div>

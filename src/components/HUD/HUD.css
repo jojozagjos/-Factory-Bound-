@@ -1,3 +1,7 @@
+:root {
+  --hud-text-scale: 1;
+}
+
 .hud {
   position: fixed;
   top: 0;
@@ -6,6 +10,24 @@
   height: 100%;
   pointer-events: none;
   z-index: 100;
+  font-size: calc(16px * var(--hud-text-scale));
+}
+
+.hud.colorblind {
+  filter: saturate(1.2) contrast(1.05);
+}
+
+.hud.high-contrast {
+  --accent: #ffd166;
+  --text-primary: #ffffff;
+  --text-secondary: #e5e5e5;
+  --secondary-bg: #0f1115;
+  --border: #ffffff;
+}
+
+.hud button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .hud > * {
@@ -507,6 +529,12 @@
   border: 2px solid var(--border);
   border-radius: 6px;
   color: var(--text-primary);
+}
+
+.settings-value {
+  min-width: 3rem;
+  text-align: right;
+  color: var(--text-secondary);
 }
 
 .settings-note {

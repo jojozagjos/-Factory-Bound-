@@ -41,6 +41,13 @@ const GameCanvas = () => {
     color: string
     size: number
   }>>([]) // For particle effects
+  const fullMapCacheRef = useRef<HTMLCanvasElement | null>(null)
+  const machineCacheRef = useRef<HTMLCanvasElement | null>(null)
+  const lod2MapCacheRef = useRef<HTMLCanvasElement | null>(null)
+  const lod4MapCacheRef = useRef<HTMLCanvasElement | null>(null)
+  const lod2MachineCacheRef = useRef<HTMLCanvasElement | null>(null)
+  const lod4MachineCacheRef = useRef<HTMLCanvasElement | null>(null)
+  const lastFrameRef = useRef<number>(0)
 
   // Update camera position when worldMap loads
   useEffect(() => {
@@ -53,6 +60,227 @@ const GameCanvas = () => {
       })
     }
   }, [worldMap])
+
+  // Build an offscreen low-resolution cache (1px per tile) for fast zoomed-out rendering
+  useEffect(() => {
+    if (!worldMap) {
+      fullMapCacheRef.current = null
+      lod2MapCacheRef.current = null
+      lod4MapCacheRef.current = null
+      return
+    }
+
+    const off = document.createElement('canvas')
+    off.width = worldMap.width
+    off.height = worldMap.height
+    const ctx = off.getContext('2d')
+    if (!ctx) return
+
+    ctx.imageSmoothingEnabled = false
+
+    for (let y = 0; y < worldMap.height; y++) {
+      for (let x = 0; x < worldMap.width; x++) {
+        const tile = worldMap.tiles.get(`${x},${y}`)
+        let color = '#0a0a0a'
+        if (tile) {
+          switch (tile.type) {
+            case 'water': color = '#2563eb'; break
+            case 'grass': color = '#16a34a'; break
+            case 'stone': color = '#71717a'; break
+            case 'sand': color = '#eab308'; break
+            default: color = '#0a0a0a'
+          }
+        }
+        ctx.fillStyle = color
+        ctx.fillRect(x, y, 1, 1)
+      }
+    }
+
+    fullMapCacheRef.current = off
+  }, [worldMap])
+
+  // Build intermediate LOD cache at 2px per tile
+  useEffect(() => {
+    if (!worldMap) {
+      lod2MapCacheRef.current = null
+      return
+    }
+
+    const off = document.createElement('canvas')
+    off.width = worldMap.width * 2
+    off.height = worldMap.height * 2
+    const ctx = off.getContext('2d')
+    if (!ctx) return
+
+    ctx.imageSmoothingEnabled = false
+
+    for (let y = 0; y < worldMap.height; y++) {
+      for (let x = 0; x < worldMap.width; x++) {
+        const tile = worldMap.tiles.get(`${x},${y}`)
+        let color = '#0a0a0a'
+        if (tile) {
+          switch (tile.type) {
+            case 'water': color = '#2563eb'; break
+            case 'grass': color = '#16a34a'; break
+            case 'stone': color = '#71717a'; break
+            case 'sand': color = '#eab308'; break
+            default: color = '#0a0a0a'
+          }
+        }
+        ctx.fillStyle = color
+        ctx.fillRect(x * 2, y * 2, 2, 2)
+      }
+    }
+
+    lod2MapCacheRef.current = off
+  }, [worldMap])
+
+  // Build intermediate LOD cache at 4px per tile
+  useEffect(() => {
+    if (!worldMap) {
+      lod4MapCacheRef.current = null
+      return
+    }
+
+    const off = document.createElement('canvas')
+    off.width = worldMap.width * 4
+    off.height = worldMap.height * 4
+    const ctx = off.getContext('2d')
+    if (!ctx) return
+
+    ctx.imageSmoothingEnabled = false
+
+    for (let y = 0; y < worldMap.height; y++) {
+      for (let x = 0; x < worldMap.width; x++) {
+        const tile = worldMap.tiles.get(`${x},${y}`)
+        let color = '#0a0a0a'
+        if (tile) {
+          switch (tile.type) {
+            case 'water': color = '#2563eb'; break
+            case 'grass': color = '#16a34a'; break
+            case 'stone': color = '#71717a'; break
+            case 'sand': color = '#eab308'; break
+            default: color = '#0a0a0a'
+          }
+        }
+        ctx.fillStyle = color
+        ctx.fillRect(x * 4, y * 4, 4, 4)
+      }
+    }
+
+    lod4MapCacheRef.current = off
+  }, [worldMap])
+
+  // Pre-render a low-res machine layer (1px per tile) for fast LOD drawing
+  useEffect(() => {
+    if (!worldMap) {
+      machineCacheRef.current = null
+      lod2MachineCacheRef.current = null
+      lod4MachineCacheRef.current = null
+      return
+    }
+
+    const off = document.createElement('canvas')
+    off.width = worldMap.width
+    off.height = worldMap.height
+    const ctx = off.getContext('2d')
+    if (!ctx) return
+
+    ctx.clearRect(0, 0, off.width, off.height)
+    ctx.imageSmoothingEnabled = false
+
+    // Draw each machine as a 1px marker (color based on type)
+    machines.forEach(m => {
+      const x = m.position.x
+      const y = m.position.y
+      let col = '#ffffff'
+      switch (m.type) {
+        case 'base': col = '#ffd966'; break
+        case 'miner': col = '#94a3b8'; break
+        case 'smelter': col = '#f97316'; break
+        case 'assembler': col = '#c084fc'; break
+        case 'belt': col = '#cbd5e1'; break
+        case 'turret': col = '#ef4444'; break
+        default: col = '#d1d5db'
+      }
+      ctx.fillStyle = col
+      ctx.fillRect(x, y, 1, 1)
+    })
+
+    machineCacheRef.current = off
+  }, [machines, worldMap])
+
+  // Pre-render machine layer for 2px per tile
+  useEffect(() => {
+    if (!worldMap) {
+      lod2MachineCacheRef.current = null
+      return
+    }
+
+    const off = document.createElement('canvas')
+    off.width = worldMap.width * 2
+    off.height = worldMap.height * 2
+    const ctx = off.getContext('2d')
+    if (!ctx) return
+
+    ctx.clearRect(0, 0, off.width, off.height)
+    ctx.imageSmoothingEnabled = false
+
+    machines.forEach(m => {
+      const x = m.position.x * 2
+      const y = m.position.y * 2
+      let col = '#ffffff'
+      switch (m.type) {
+        case 'base': col = '#ffd966'; break
+        case 'miner': col = '#94a3b8'; break
+        case 'smelter': col = '#f97316'; break
+        case 'assembler': col = '#c084fc'; break
+        case 'belt': col = '#cbd5e1'; break
+        case 'turret': col = '#ef4444'; break
+        default: col = '#d1d5db'
+      }
+      ctx.fillStyle = col
+      ctx.fillRect(x, y, 2, 2)
+    })
+
+    lod2MachineCacheRef.current = off
+  }, [machines, worldMap])
+
+  // Pre-render machine layer for 4px per tile
+  useEffect(() => {
+    if (!worldMap) {
+      lod4MachineCacheRef.current = null
+      return
+    }
+
+    const off = document.createElement('canvas')
+    off.width = worldMap.width * 4
+    off.height = worldMap.height * 4
+    const ctx = off.getContext('2d')
+    if (!ctx) return
+
+    ctx.clearRect(0, 0, off.width, off.height)
+    ctx.imageSmoothingEnabled = false
+
+    machines.forEach(m => {
+      const x = m.position.x * 4
+      const y = m.position.y * 4
+      let col = '#ffffff'
+      switch (m.type) {
+        case 'base': col = '#ffd966'; break
+        case 'miner': col = '#94a3b8'; break
+        case 'smelter': col = '#f97316'; break
+        case 'assembler': col = '#c084fc'; break
+        case 'belt': col = '#cbd5e1'; break
+        case 'turret': col = '#ef4444'; break
+        default: col = '#d1d5db'
+      }
+      ctx.fillStyle = col
+      ctx.fillRect(x, y, 4, 4)
+    })
+
+    lod4MachineCacheRef.current = off
+  }, [machines, worldMap])
 
   // Listen for grid toggle
   useEffect(() => {
@@ -78,19 +306,34 @@ const GameCanvas = () => {
 
     let animationFrameId: number
 
-    // Simple render loop
+      // Simple render loop
     const render = () => {
+      const LOD1_ZOOM = 0.6
+      const LOD2_ZOOM = 0.85
+      const LOD3_ZOOM = 1.0
+      // Frame rate cap depending on zoom (60fps normally, 30fps when using LOD caches)
+      const now = performance.now()
+      const targetMs = camera.zoom <= LOD3_ZOOM ? (1000 / 30) : (1000 / 60)
+      if (now - lastFrameRef.current < targetMs) {
+        animationFrameId = requestAnimationFrame(render)
+        return
+      }
+      lastFrameRef.current = now
+
       // Update animation time for belt animations
-      animationTimeRef.current += 0.016 // ~60fps
-      
-      // Update particles
-      particlesRef.current = particlesRef.current.filter(p => {
-        p.x += p.vx
-        p.y += p.vy
-        p.vy += 0.05 // Gravity
-        p.life -= 1
-        return p.life > 0
-      })
+      animationTimeRef.current += (now - (lastFrameRef.current || now)) / 1000
+
+      const skipEffects = camera.zoom <= LOD3_ZOOM
+      // Update particles (skip heavy updates when zoomed out)
+      if (!skipEffects) {
+        particlesRef.current = particlesRef.current.filter(p => {
+          p.x += p.vx
+          p.y += p.vy
+          p.vy += 0.05 // Gravity
+          p.life -= 1
+          return p.life > 0
+        })
+      }
       
       // Clear canvas completely
       ctx.save()
@@ -120,119 +363,148 @@ const GameCanvas = () => {
         visibleTop = Math.floor((camera.y - canvas.height / (2 * camera.zoom)) / gridSize) - 1
         visibleBottom = Math.ceil((camera.y + canvas.height / (2 * camera.zoom)) / gridSize) + 1
 
-        // Draw only visible tiles
-        for (let tileY = Math.max(0, visibleTop); tileY < Math.min(worldMap.height, visibleBottom); tileY++) {
-          for (let tileX = Math.max(0, visibleLeft); tileX < Math.min(worldMap.width, visibleRight); tileX++) {
-            const tile = worldMap.tiles.get(`${tileX},${tileY}`)
-            if (!tile) continue
+        // Choose appropriate LOD cache based on zoom
+        const cache = (camera.zoom <= LOD1_ZOOM
+          ? fullMapCacheRef.current
+          : camera.zoom <= LOD2_ZOOM
+            ? lod2MapCacheRef.current
+            : camera.zoom <= LOD3_ZOOM
+              ? lod4MapCacheRef.current
+              : null)
+        const machineCache = (camera.zoom <= LOD1_ZOOM
+          ? machineCacheRef.current
+          : camera.zoom <= LOD2_ZOOM
+            ? lod2MachineCacheRef.current
+            : camera.zoom <= LOD3_ZOOM
+              ? lod4MachineCacheRef.current
+              : null)
+        if (cache) {
+          ctx.imageSmoothingEnabled = false
+          const worldPxW = worldMap.width * gridSize
+          const worldPxH = worldMap.height * gridSize
+          ctx.drawImage(cache, 0, 0, cache.width, cache.height, 0, 0, worldPxW, worldPxH)
 
-            const screenX = tile.x * gridSize
-            const screenY = tile.y * gridSize
+          // Fast path: draw simplified machine layer (1px markers stretched)
+          if (machineCache) {
+            ctx.globalAlpha = 0.95
+            ctx.drawImage(machineCache, 0, 0, machineCache.width, machineCache.height, 0, 0, worldPxW, worldPxH)
+            ctx.globalAlpha = 1
+          }
+        } else {
+          // Draw only visible tiles
+          for (let tileY = Math.max(0, visibleTop); tileY < Math.min(worldMap.height, visibleBottom); tileY++) {
+            for (let tileX = Math.max(0, visibleLeft); tileX < Math.min(worldMap.width, visibleRight); tileX++) {
+              const tile = worldMap.tiles.get(`${tileX},${tileY}`)
+              if (!tile) continue
 
-            // Draw tile with better colors
-            switch (tile.type) {
-              case 'water':
-                ctx.fillStyle = '#1e3a8a'
-                ctx.fillRect(screenX, screenY, gridSize, gridSize)
-                // Add water texture
-                if (showGrid) {
-                  ctx.fillStyle = '#2563eb'
-                  ctx.fillRect(screenX + 2, screenY + 2, gridSize - 4, gridSize - 4)
-                } else {
-                  ctx.fillStyle = '#2563eb'
-                  ctx.fillRect(screenX, screenY, gridSize, gridSize)
-                }
-                break
-              case 'grass':
-                ctx.fillStyle = '#15803d'
-                ctx.fillRect(screenX, screenY, gridSize, gridSize)
-                // Add grass texture
-                if (showGrid) {
-                  ctx.fillStyle = '#16a34a'
-                  ctx.fillRect(screenX + 1, screenY + 1, gridSize - 2, gridSize - 2)
-                } else {
-                  ctx.fillStyle = '#16a34a'
-                  ctx.fillRect(screenX, screenY, gridSize, gridSize)
-                }
-                break
-              case 'stone':
-                ctx.fillStyle = '#52525b'
-                ctx.fillRect(screenX, screenY, gridSize, gridSize)
-                // Add stone texture
-                if (showGrid) {
-                  ctx.fillStyle = '#71717a'
-                  ctx.fillRect(screenX + 2, screenY + 2, gridSize - 4, gridSize - 4)
-                } else {
-                  ctx.fillStyle = '#71717a'
-                  ctx.fillRect(screenX, screenY, gridSize, gridSize)
-                }
-                break
-              case 'sand':
-                ctx.fillStyle = '#ca8a04'
-                ctx.fillRect(screenX, screenY, gridSize, gridSize)
-                // Add sand texture
-                if (showGrid) {
-                  ctx.fillStyle = '#eab308'
-                  ctx.fillRect(screenX + 1, screenY + 1, gridSize - 2, gridSize - 2)
-                } else {
-                  ctx.fillStyle = '#eab308'
-                  ctx.fillRect(screenX, screenY, gridSize, gridSize)
-                }
-                break
-              default:
-                ctx.fillStyle = '#1a1a1a'
-                ctx.fillRect(screenX, screenY, gridSize, gridSize)
-            }
+              const screenX = tile.x * gridSize
+              const screenY = tile.y * gridSize
 
-            // Draw resources with better visuals
-            if (tile.resource) {
-              const resourceSize = 12
-              ctx.save()
-              ctx.translate(screenX + gridSize / 2, screenY + gridSize / 2)
-              
-              if (tile.resource.type === 'iron_ore') {
-                // Iron ore - gray with darker outline
-                ctx.fillStyle = '#3f3f46'
-                ctx.beginPath()
-                ctx.arc(0, 0, resourceSize, 0, Math.PI * 2)
-                ctx.fill()
-                ctx.fillStyle = '#a1a1aa'
-                ctx.beginPath()
-                ctx.arc(0, 0, resourceSize - 3, 0, Math.PI * 2)
-                ctx.fill()
-              } else if (tile.resource.type === 'copper_ore') {
-                // Copper ore - orange/brown
-                ctx.fillStyle = '#c2410c'
-                ctx.beginPath()
-                ctx.arc(0, 0, resourceSize, 0, Math.PI * 2)
-                ctx.fill()
-                ctx.fillStyle = '#f97316'
-                ctx.beginPath()
-                ctx.arc(0, 0, resourceSize - 3, 0, Math.PI * 2)
-                ctx.fill()
-              } else if (tile.resource.type === 'coal') {
-                // Coal - black
-                ctx.fillStyle = '#000000'
-                ctx.beginPath()
-                ctx.arc(0, 0, resourceSize, 0, Math.PI * 2)
-                ctx.fill()
-                ctx.fillStyle = '#27272a'
-                ctx.beginPath()
-                ctx.arc(0, 0, resourceSize - 3, 0, Math.PI * 2)
-                ctx.fill()
-              } else if (tile.resource.type === 'stone') {
-                // Stone - gray/brown
-                ctx.fillStyle = '#57534e'
-                ctx.beginPath()
-                ctx.arc(0, 0, resourceSize, 0, Math.PI * 2)
-                ctx.fill()
-                ctx.fillStyle = '#78716c'
-                ctx.beginPath()
-                ctx.arc(0, 0, resourceSize - 3, 0, Math.PI * 2)
-                ctx.fill()
+              // Draw tile with better colors
+              switch (tile.type) {
+                case 'water':
+                  ctx.fillStyle = '#1e3a8a'
+                  ctx.fillRect(screenX, screenY, gridSize, gridSize)
+                  // Add water texture
+                  if (showGrid) {
+                    ctx.fillStyle = '#2563eb'
+                    ctx.fillRect(screenX + 2, screenY + 2, gridSize - 4, gridSize - 4)
+                  } else {
+                    ctx.fillStyle = '#2563eb'
+                    ctx.fillRect(screenX, screenY, gridSize, gridSize)
+                  }
+                  break
+                case 'grass':
+                  ctx.fillStyle = '#15803d'
+                  ctx.fillRect(screenX, screenY, gridSize, gridSize)
+                  // Add grass texture
+                  if (showGrid) {
+                    ctx.fillStyle = '#16a34a'
+                    ctx.fillRect(screenX + 1, screenY + 1, gridSize - 2, gridSize - 2)
+                  } else {
+                    ctx.fillStyle = '#16a34a'
+                    ctx.fillRect(screenX, screenY, gridSize, gridSize)
+                  }
+                  break
+                case 'stone':
+                  ctx.fillStyle = '#52525b'
+                  ctx.fillRect(screenX, screenY, gridSize, gridSize)
+                  // Add stone texture
+                  if (showGrid) {
+                    ctx.fillStyle = '#71717a'
+                    ctx.fillRect(screenX + 2, screenY + 2, gridSize - 4, gridSize - 4)
+                  } else {
+                    ctx.fillStyle = '#71717a'
+                    ctx.fillRect(screenX, screenY, gridSize, gridSize)
+                  }
+                  break
+                case 'sand':
+                  ctx.fillStyle = '#ca8a04'
+                  ctx.fillRect(screenX, screenY, gridSize, gridSize)
+                  // Add sand texture
+                  if (showGrid) {
+                    ctx.fillStyle = '#eab308'
+                    ctx.fillRect(screenX + 1, screenY + 1, gridSize - 2, gridSize - 2)
+                  } else {
+                    ctx.fillStyle = '#eab308'
+                    ctx.fillRect(screenX, screenY, gridSize, gridSize)
+                  }
+                  break
+                default:
+                  ctx.fillStyle = '#1a1a1a'
+                  ctx.fillRect(screenX, screenY, gridSize, gridSize)
               }
-              
-              ctx.restore()
+
+              // Draw resources with better visuals
+              if (tile.resource) {
+                const resourceSize = 12
+                ctx.save()
+                ctx.translate(screenX + gridSize / 2, screenY + gridSize / 2)
+                
+                if (tile.resource.type === 'iron_ore') {
+                  // Iron ore - gray with darker outline
+                  ctx.fillStyle = '#3f3f46'
+                  ctx.beginPath()
+                  ctx.arc(0, 0, resourceSize, 0, Math.PI * 2)
+                  ctx.fill()
+                  ctx.fillStyle = '#a1a1aa'
+                  ctx.beginPath()
+                  ctx.arc(0, 0, resourceSize - 3, 0, Math.PI * 2)
+                  ctx.fill()
+                } else if (tile.resource.type === 'copper_ore') {
+                  // Copper ore - orange/brown
+                  ctx.fillStyle = '#c2410c'
+                  ctx.beginPath()
+                  ctx.arc(0, 0, resourceSize, 0, Math.PI * 2)
+                  ctx.fill()
+                  ctx.fillStyle = '#f97316'
+                  ctx.beginPath()
+                  ctx.arc(0, 0, resourceSize - 3, 0, Math.PI * 2)
+                  ctx.fill()
+                } else if (tile.resource.type === 'coal') {
+                  // Coal - black
+                  ctx.fillStyle = '#000000'
+                  ctx.beginPath()
+                  ctx.arc(0, 0, resourceSize, 0, Math.PI * 2)
+                  ctx.fill()
+                  ctx.fillStyle = '#27272a'
+                  ctx.beginPath()
+                  ctx.arc(0, 0, resourceSize - 3, 0, Math.PI * 2)
+                  ctx.fill()
+                } else if (tile.resource.type === 'stone') {
+                  // Stone - gray/brown
+                  ctx.fillStyle = '#57534e'
+                  ctx.beginPath()
+                  ctx.arc(0, 0, resourceSize, 0, Math.PI * 2)
+                  ctx.fill()
+                  ctx.fillStyle = '#78716c'
+                  ctx.beginPath()
+                  ctx.arc(0, 0, resourceSize - 3, 0, Math.PI * 2)
+                  ctx.fill()
+                }
+                
+                ctx.restore()
+              }
             }
           }
         }
@@ -525,10 +797,17 @@ const GameCanvas = () => {
         ctx.restore()
       })
 
-      // Draw enemies
+      // Draw enemies (simplified at LOD)
       enemies.forEach(enemy => {
         const x = enemy.position.x * gridSize
         const y = enemy.position.y * gridSize
+
+        if (camera.zoom <= LOD3_ZOOM) {
+          // Simplified enemy marker when zoomed out
+          ctx.fillStyle = '#ef4444'
+          ctx.fillRect(x - 4, y - 4, 8, 8)
+          return
+        }
 
         ctx.save()
         ctx.translate(x, y)
@@ -549,10 +828,16 @@ const GameCanvas = () => {
         ctx.restore()
       })
 
-      // Draw projectiles
+      // Draw projectiles (simplified at LOD)
       projectiles.forEach(projectile => {
         const x = projectile.position.x * gridSize
         const y = projectile.position.y * gridSize
+
+        if (camera.zoom <= LOD3_ZOOM) {
+          ctx.fillStyle = '#fbbf24'
+          ctx.fillRect(x - 2, y - 2, 4, 4)
+          return
+        }
 
         ctx.fillStyle = '#fbbf24'
         ctx.beginPath()
@@ -560,17 +845,19 @@ const GameCanvas = () => {
         ctx.fill()
       })
 
-      // Draw particles
-      particlesRef.current.forEach(particle => {
-        ctx.save()
-        const alpha = particle.life / particle.maxLife
-        ctx.globalAlpha = alpha
-        ctx.fillStyle = particle.color
-        ctx.beginPath()
-        ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2)
-        ctx.fill()
-        ctx.restore()
-      })
+      // Draw particles (skip when zoomed out)
+      if (!skipEffects) {
+        particlesRef.current.forEach(particle => {
+          ctx.save()
+          const alpha = particle.life / particle.maxLife
+          ctx.globalAlpha = alpha
+          ctx.fillStyle = particle.color
+          ctx.beginPath()
+          ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2)
+          ctx.fill()
+          ctx.restore()
+        })
+      }
 
       // Restore canvas state
       ctx.restore()

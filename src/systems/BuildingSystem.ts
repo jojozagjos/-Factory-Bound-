@@ -197,7 +197,7 @@ export class BuildingSystem {
    * Get base health for machine type
    */
   private getMachineBaseHealth(machineType: MachineType): number {
-    const healthMap: Record<MachineType, number> = {
+    const healthMap: Partial<Record<MachineType, number>> = {
       miner: 150,
       assembler: 200,
       smelter: 150,
@@ -215,7 +215,7 @@ export class BuildingSystem {
    * Get power requirement for machine type
    */
   private getMachinePowerRequirement(machineType: MachineType): number {
-    const powerMap: Record<MachineType, number> = {
+    const powerMap: Partial<Record<MachineType, number>> = {
       miner: 90,
       assembler: 150,
       smelter: 180,
@@ -313,34 +313,22 @@ export class BuildingSystem {
     }
 
     const bases: Machine[] = []
-    const margin = 20 // Distance from map edge
-    
-    // Define base positions for different player counts
-    const basePositions: Record<number, Position[]> = {
-      2: [
-        { x: margin, y: margin }, // Top-left
-        { x: mapWidth - margin, y: mapHeight - margin }, // Bottom-right
-      ],
-      3: [
-        { x: margin, y: margin }, // Top-left
-        { x: mapWidth - margin, y: margin }, // Top-right
-        { x: Math.floor(mapWidth / 2), y: mapHeight - margin }, // Bottom-center
-      ],
-      4: [
-        { x: margin, y: margin }, // Top-left
-        { x: mapWidth - margin, y: margin }, // Top-right
-        { x: margin, y: mapHeight - margin }, // Bottom-left
-        { x: mapWidth - margin, y: mapHeight - margin }, // Bottom-right
-      ],
-    }
+    // Place bases evenly around a circle centered on the map to maximize separation
+    const centerX = Math.floor(mapWidth / 2)
+    const centerY = Math.floor(mapHeight / 2)
+    const radius = Math.floor(Math.min(mapWidth, mapHeight) / 3)
 
-    const positions = basePositions[playerCount]
-    
-    positions.forEach((position, index) => {
-      const base = this.createStartingBase(position)
-      base.id = `base_player${index + 1}_${Date.now()}`
+    for (let i = 0; i < playerCount; i++) {
+      const angle = (2 * Math.PI * i) / playerCount
+      const jitter = 0.1 * (Math.random() - 0.5) // small jitter to avoid perfect symmetry
+      const ax = Math.cos(angle + jitter)
+      const ay = Math.sin(angle + jitter)
+      const posX = Math.max(0, Math.min(mapWidth - 1, centerX + Math.floor(ax * radius)))
+      const posY = Math.max(0, Math.min(mapHeight - 1, centerY + Math.floor(ay * radius)))
+      const base = this.createStartingBase({ x: posX, y: posY })
+      base.id = `base_player${i + 1}_${Date.now()}`
       bases.push(base)
-    })
+    }
 
     return bases
   }

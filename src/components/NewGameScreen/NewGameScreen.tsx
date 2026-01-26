@@ -22,6 +22,7 @@ const NewGameScreen = ({ onStartGame, onCancel }: NewGameScreenProps) => {
   const [seed, setSeed] = useState(Date.now().toString())
   const [selectedMode, setSelectedMode] = useState<GameMode>(GameMode.CUSTOM)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  // No starting base chosen from the menu: player must place base in-game
   
   // New Builderment-style game settings
   const [enemiesEnabled, setEnemiesEnabled] = useState(false)
@@ -31,103 +32,110 @@ const NewGameScreen = ({ onStartGame, onCancel }: NewGameScreenProps) => {
   const [difficulty, setDifficulty] = useState<'easy' | 'normal' | 'hard' | 'nightmare'>('normal')
 
   const gameModes = [
-    { mode: GameMode.PRODUCTION, name: 'Production', description: 'Focus on building and optimization', icon: '🏭' },
-    { mode: GameMode.SURVIVAL, name: 'Survival', description: 'Gather resources, defend against waves', icon: '⚔️' },
-    { mode: GameMode.EXPLORATION, name: 'Exploration', description: 'Discover and expand your factory', icon: '🗺️' },
-    { mode: GameMode.CUSTOM, name: 'Custom', description: 'Build and automate at your own pace', icon: '⚙️' },
+    { mode: GameMode.PRODUCTION, name: 'Production', description: 'Focus on building and optimization', objective: 'Produce 1,000 electronic circuits', icon: '🏭' },
+    { mode: GameMode.SURVIVAL, name: 'Survival', description: 'Gather resources, defend against waves', objective: 'Survive for 30 minutes or defeat 10 waves', icon: '⚔️' },
+    { mode: GameMode.EXPLORATION, name: 'Exploration', description: 'Discover and expand your factory', objective: 'Research all tier 5 technologies', icon: '🗺️' },
+    { mode: GameMode.CUSTOM, name: 'Custom', description: 'Build and automate at your own pace', objective: 'No specific objective — play freely', icon: '⚙️' },
   ]
 
-  const generateRandomSeed = () => {
-    const randomSeed = Math.floor(Math.random() * 1000000000).toString()
-    setSeed(randomSeed)
-  }
-
-  useEffect(() => {
+  // Draw the preview into the canvas; handles high-DPI displays
+  const drawPreview = (seedStr?: string) => {
     const canvas = canvasRef.current
     if (!canvas) return
+
+    // Always use fixed preview size for canvas, avoid shrinking
+    const cssWidth = 300
+    const cssHeight = 300
+    const dpr = window.devicePixelRatio || 1
+
+    // Resize backing store for crisp rendering on high-DPI screens
+    canvas.width = Math.floor(cssWidth * dpr)
+    canvas.height = Math.floor(cssHeight * dpr)
+    canvas.style.width = `${cssWidth}px`
+    canvas.style.height = `${cssHeight}px`
 
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    const previewSize = 30
-    const tileSize = canvas.width / previewSize
+    // Scale drawing operations to account for DPR
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
-    // Debounce preview generation
-    const timeoutId = setTimeout(() => {
-      try {
-        const seedNumber = parseInt(seed) || Date.now()
+    // Always render a full-map scaled preview for better visibility
+    const previewSize = 150
+    const tileSize = Math.max(1, Math.floor(cssWidth / previewSize))
+
+    try {
+        const seedNumber = parseInt(seedStr ?? seed) || Date.now()
         const generator = new ProceduralGenerator(seedNumber)
-        const map = generator.generateMap(previewSize, previewSize, [])
+        // Derive expected world map size the same way `startGame` does
+        const expectedMapSize = (seedNumber % 100 === 0) ? 300 : 500
 
-        ctx.clearRect(0, 0, canvas.width, canvas.height)
+        // Generate full map once (seeded) and sample it at a lower resolution for preview
+        const fullMap = generator.generateMap(expectedMapSize, expectedMapSize, [])
 
-        for (let y = 0; y < previewSize; y++) {
-          for (let x = 0; x < previewSize; x++) {
-            const tile = map.tiles.get(`${x},${y}`)
+        for (let py = 0; py < previewSize; py++) {
+          for (let px = 0; px < previewSize; px++) {
+            const worldX = Math.floor((px / previewSize) * expectedMapSize)
+            const worldY = Math.floor((py / previewSize) * expectedMapSize)
+            const tile = fullMap.tiles.get(`${worldX},${worldY}`)
             if (!tile) continue
 
             let color = '#1a1a1a'
             switch (tile.type) {
-              case 'water':
-                color = '#2563eb'
-                break
-              case 'grass':
-                color = '#16a34a'
-                break
-              case 'stone':
-                color = '#71717a'
-              break
-            case 'sand':
-              color = '#eab308'
-              break
-          }
-
-          ctx.fillStyle = color
-          ctx.fillRect(x * tileSize, y * tileSize, tileSize, tileSize)
-
-          // Draw resource with proper colors for all 4 types
-          if (tile.resource) {
-            let resourceColor = '#a1a1aa' // Default iron
-            switch (tile.resource.type) {
-              case 'iron_ore':
-                resourceColor = '#a1a1aa' // Gray
-                break
-              case 'copper_ore':
-                resourceColor = '#f97316' // Orange
-                break
-              case 'coal':
-                resourceColor = '#27272a' // Black
-                break
-              case 'stone':
-                resourceColor = '#78716c' // Brown
-                break
+              case 'water': color = '#2563eb'; break
+              case 'grass': color = '#16a34a'; break
+              case 'stone': color = '#71717a'; break
+              case 'sand': color = '#eab308'; break
             }
-            ctx.fillStyle = resourceColor
-            ctx.beginPath()
-            ctx.arc(
-              x * tileSize + tileSize / 2,
-              y * tileSize + tileSize / 2,
-              tileSize / 4,
-              0,
-              Math.PI * 2
-            )
-            ctx.fill()
+
+            ctx.fillStyle = color
+            ctx.fillRect(px * tileSize, py * tileSize, tileSize, tileSize)
+
+            if (tile.resource) {
+              let resourceColor = '#a1a1aa'
+              switch (tile.resource.type) {
+                case 'iron_ore': resourceColor = '#94a3b8'; break
+                case 'copper_ore': resourceColor = '#f97316'; break
+                case 'coal': resourceColor = '#27272a'; break
+                case 'stone': resourceColor = '#78716c'; break
+              }
+              ctx.fillStyle = resourceColor
+              ctx.beginPath()
+              ctx.arc(px * tileSize + tileSize / 2, py * tileSize + tileSize / 2, Math.max(1, tileSize / 4), 0, Math.PI * 2)
+              ctx.fill()
+            }
           }
         }
-      }
-      } catch (error) {
-        console.error('Error generating preview:', error)
-        ctx.fillStyle = '#1a1a1a'
-        ctx.fillRect(0, 0, canvas.width, canvas.height)
-        ctx.fillStyle = 'white'
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'middle'
-        ctx.fillText('Preview unavailable', canvas.width / 2, canvas.height / 2)
-      }
-    }, 300) // Debounce delay: 300ms
 
-    return () => clearTimeout(timeoutId)
+        // Note: preview is read-only — starting base selection is done in-game
+
+      // Note: preview is informational only; drawing complete above.
+    } catch (error) {
+      console.error('Error generating preview:', error)
+      ctx.setTransform(1, 0, 0, 1, 0, 0)
+      ctx.fillStyle = '#1a1a1a'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      ctx.fillStyle = 'white'
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillText('Preview unavailable', cssWidth / 2, cssHeight / 2)
+    }
+  }
+
+  useEffect(() => {
+    // initial draw and redraw on resize
+    drawPreview()
+    const handleResize = () => drawPreview()
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
+  // Redraw when seed changes
+  useEffect(() => {
+    drawPreview()
   }, [seed])
+
+  // No click handler: preview is informational only
 
   const handleStart = () => {
     const seedNumber = parseInt(seed) || Date.now()
@@ -148,9 +156,6 @@ const NewGameScreen = ({ onStartGame, onCancel }: NewGameScreenProps) => {
       <div className="new-game-screen" onClick={(e) => e.stopPropagation()}>
         <div className="new-game-header">
           <h1>🎮 New Game</h1>
-          <button className="new-game-close-btn" onClick={onCancel} aria-label="Close">
-            ✕
-          </button>
         </div>
 
         <div className="new-game-content">
@@ -176,10 +181,10 @@ const NewGameScreen = ({ onStartGame, onCancel }: NewGameScreenProps) => {
                   id="seed"
                   type="text"
                   value={seed}
-                  onChange={(e) => setSeed(e.target.value)}
+                  onChange={(e) => { setSeed(e.target.value); drawPreview(e.target.value); }}
                   placeholder="Enter seed..."
                 />
-                <button className="random-seed-btn" onClick={generateRandomSeed}>
+                <button type="button" className="random-seed-btn" onClick={() => { const s = Math.floor(Math.random() * 1000000000).toString(); setSeed(s); drawPreview(s); }}>
                   🎲 Random
                 </button>
               </div>
@@ -209,7 +214,24 @@ const NewGameScreen = ({ onStartGame, onCancel }: NewGameScreenProps) => {
                   <span className="legend-color sand"></span>
                   <span>Sand</span>
                 </div>
+                <div className="legend-item">
+                  <span className="legend-color iron"></span>
+                  <span>Iron Ore</span>
+                </div>
+                <div className="legend-item">
+                  <span className="legend-color copper"></span>
+                  <span>Copper Ore</span>
+                </div>
+                <div className="legend-item">
+                  <span className="legend-color coal"></span>
+                  <span>Coal</span>
+                </div>
+                <div className="legend-item">
+                  <span className="legend-color stone-resource"></span>
+                  <span>Stone Resource</span>
+                </div>
               </div>
+              
             </div>
           </div>
 
@@ -228,6 +250,13 @@ const NewGameScreen = ({ onStartGame, onCancel }: NewGameScreenProps) => {
                   <div className="mode-description">{mode.description}</div>
                 </button>
               ))}
+            </div>
+
+            <div className="mode-objective">
+              <h3>Goal</h3>
+              <p>
+                {gameModes.find(m => m.mode === selectedMode)?.objective ?? 'No specific objective'}
+              </p>
             </div>
           </div>
 

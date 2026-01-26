@@ -38,6 +38,46 @@
   font-weight: 600;
 }
 
+.manage-unlocks {
+  float: right;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.06);
+  color: #dbeafe;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.unlock-manage-modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.5);
+  z-index: 110;
+}
+
+.unlock-manage-panel {
+  background: #0b1220;
+  border: 1px solid rgba(74,158,255,0.18);
+  padding: 16px;
+  width: 420px;
+  max-width: calc(100% - 40px);
+  border-radius: 12px;
+}
+
+.manage-header {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:12px;
+}
+
+.manage-list { display:flex; flex-direction:column; gap:8px; max-height:60vh; overflow:auto; }
+.manage-row { display:flex; align-items:center; gap:12px; color:#e6eef8 }
+.manage-name { font-weight:600 }
+
 .unlock-list {
   display: flex;
   flex-direction: column;

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useGameStore } from '../../store/gameStore'
+import { audioSystem } from '@/systems/AudioSystem/AudioSystem'
 import './HUD.css'
 
 interface HUDProps {
@@ -28,6 +29,10 @@ const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree
   const [showPlayerList, setShowPlayerList] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [showGrid, setShowGrid] = useState(true)
+  const [textScale, setTextScale] = useState(1)
+  const [colorblindMode, setColorblindMode] = useState(false)
+  const [highContrast, setHighContrast] = useState(false)
+  const [audioLevels, setAudioLevels] = useState({ master: 80, music: 60, sfx: 80 })
   
   const isMultiplayer = session?.settings?.maxPlayers && session.settings.maxPlayers > 1
   
@@ -40,6 +45,10 @@ const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree
     document.addEventListener('fullscreenchange', handleFullscreenChange)
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
   }, [])
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--hud-text-scale', textScale.toString())
+  }, [textScale])
   
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -89,6 +98,18 @@ const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [isMultiplayer, showPauseMenu, isPaused, togglePause])
+
+  const handleAudioChange = (type: 'master' | 'music' | 'sfx', value: number) => {
+    setAudioLevels(prev => {
+      const next = { ...prev, [type]: value }
+      audioSystem.updateSettings({
+        masterVolume: next.master / 100,
+        musicVolume: next.music / 100,
+        sfxVolume: next.sfx / 100,
+      })
+      return next
+    })
+  }
   
   // Format game time
   const formatTime = (ms: number) => {
@@ -130,7 +151,7 @@ const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree
   }
 
   return (
-    <div className="hud">
+    <div className={`hud ${colorblindMode ? 'colorblind' : ''} ${highContrast ? 'high-contrast' : ''}`}>
       {/* Top Bar */}
       <div className="hud-top">
         <div className="player-stats">
@@ -432,6 +453,34 @@ const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree
                       onChange={toggleGridSetting}
                     />
                   </label>
+                  <label>
+                    <span>Text Scale</span>
+                    <input
+                      type="range"
+                      min="0.85"
+                      max="1.25"
+                      step="0.05"
+                      value={textScale}
+                      onChange={(e) => setTextScale(parseFloat(e.target.value))}
+                    />
+                    <span className="settings-value">{Math.round(textScale * 100)}%</span>
+                  </label>
+                  <label>
+                    <span>Colorblind Boost</span>
+                    <input
+                      type="checkbox"
+                      checked={colorblindMode}
+                      onChange={(e) => setColorblindMode(e.target.checked)}
+                    />
+                  </label>
+                  <label>
+                    <span>High Contrast</span>
+                    <input
+                      type="checkbox"
+                      checked={highContrast}
+                      onChange={(e) => setHighContrast(e.target.checked)}
+                    />
+                  </label>
                 </div>
                 <div className="settings-section">
                   <h3>Graphics</h3>
@@ -449,18 +498,36 @@ const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree
                   <h3>Audio</h3>
                   <label>
                     <span>Master Volume</span>
-                    <input type="range" min="0" max="100" defaultValue="80" />
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={audioLevels.master}
+                      onChange={(e) => handleAudioChange('master', parseInt(e.target.value))}
+                    />
                   </label>
                   <label>
                     <span>Music Volume</span>
-                    <input type="range" min="0" max="100" defaultValue="60" />
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={audioLevels.music}
+                      onChange={(e) => handleAudioChange('music', parseInt(e.target.value))}
+                    />
                   </label>
                   <label>
                     <span>SFX Volume</span>
-                    <input type="range" min="0" max="100" defaultValue="80" />
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={audioLevels.sfx}
+                      onChange={(e) => handleAudioChange('sfx', parseInt(e.target.value))}
+                    />
                   </label>
                 </div>
-                <p className="settings-note">Note: Some settings are currently visual only. Full settings system coming soon.</p>
+                <p className="settings-note">Display and audio settings apply instantly; more options coming soon.</p>
                 <button 
                   className="menu-btn" 
                   onClick={() => setShowSettings(false)}

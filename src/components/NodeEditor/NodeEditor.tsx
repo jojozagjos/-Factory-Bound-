@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react'
+import React, { useCallback, useState } from 'react'
 import ReactFlow, {
   Node,
   Edge,
@@ -13,9 +13,13 @@ import ReactFlow, {
 } from 'reactflow'
 import 'reactflow/dist/style.css'
 import './NodeEditor.css'
+import { SimulationEngine } from '../../engine/simulation/SimulationEngine'
+import type { Machine } from '../../types/game'
 
 interface NodeEditorProps {
   onClose: () => void
+  selectedMachine?: Machine | null
+  onSaveProgram?: (programId: string, machineId: string) => void
 }
 
 const initialNodes: Node[] = [
@@ -50,9 +54,17 @@ const initialEdges: Edge[] = [
   { id: 'e2-3', source: '2', target: '3' },
 ]
 
-const NodeEditor = ({ onClose }: NodeEditorProps) => {
+const NodeEditor = ({ onClose, selectedMachine, onSaveProgram }: NodeEditorProps) => {
   const [nodes, setNodes] = React.useState<Node[]>(initialNodes)
   const [edges, setEdges] = React.useState<Edge[]>(initialEdges)
+  const [lastTestResult, setLastTestResult] = useState<string>('')
+  const [savedPrograms, setSavedPrograms] = useState<Record<string, { nodes: any[]; connections: any[] }>>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('node_programs') || '{}')
+    } catch {
+      return {}
+    }
+  })
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds)),
@@ -91,9 +103,56 @@ const NodeEditor = ({ onClose }: NodeEditorProps) => {
   }
 
   const saveProgram = () => {
-    console.log('Saving node program:', { nodes, edges })
-    // This would save the program to the selected machine
-    alert('Node program saved! This will control machine behavior.')
+    const program = {
+      nodes: nodes.map(n => ({ id: n.id, type: n.type, data: n.data })),
+      connections: edges.map(e => ({ id: e.id, from: e.source, to: e.target })),
+    }
+
+    try {
+      const stored = JSON.parse(localStorage.getItem('node_programs') || '{}')
+      const progId = `prog_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+      stored[progId] = program
+      localStorage.setItem('node_programs', JSON.stringify(stored))
+      setSavedPrograms(stored)
+      
+      // If a machine is selected, bind the program to it
+      if (selectedMachine && onSaveProgram) {
+        onSaveProgram(progId, selectedMachine.id)
+      }
+      
+      alert(`Program saved: ${progId}${selectedMachine ? ' (bound to ' + selectedMachine.type + ')' : ''}`)
+    } catch (err) {
+      console.error('Failed to save program:', err)
+      alert('Failed to save program. See console for details.')
+    }
+  }
+
+  const handleTestRun = () => {
+    const sim = new SimulationEngine()
+    const program = {
+      nodes: nodes.map(n => ({ id: n.id, type: n.type, data: n.data })),
+      connections: edges.map(e => ({ id: e.id, from: e.source, to: e.target })),
+    }
+
+    const sandboxMachine: any = {
+      id: 'sandbox_1',
+      type: selectedMachine?.type || 'assembler',
+      inventory: selectedMachine?.inventory || [ { id: 'item_iron', name: 'iron_ore', quantity: 120 } ],
+      power: selectedMachine?.power || { connected: true, available: 1000, required: 150 },
+      health: selectedMachine?.health || 100,
+      maxHealth: selectedMachine?.maxHealth || 100,
+      nodeProgram: null,
+    }
+
+    try {
+      const result = sim.runNodeProgramOnce(program, sandboxMachine)
+      const resultText = `Inventory: ${JSON.stringify(result.inventory)}\nPower Required: ${result.power.required}`
+      setLastTestResult(resultText)
+      alert('Test Run result:\n' + resultText)
+    } catch (err) {
+      console.error('Test run failed:', err)
+      alert('Test run failed. See console for details.')
+    }
   }
 
   return (
@@ -101,6 +160,7 @@ const NodeEditor = ({ onClose }: NodeEditorProps) => {
       <div className="node-editor">
         <div className="node-editor-header">
           <h2>Visual Node Programming</h2>
+          {selectedMachine && <span className="machine-info">📦 {selectedMachine.type}</span>}
           <button className="close-btn" onClick={onClose} aria-label="Close node editor">
             ✕
           </button>
@@ -128,7 +188,7 @@ const NodeEditor = ({ onClose }: NodeEditorProps) => {
           <button onClick={saveProgram} className="toolbar-btn save-btn">
             💾 Save Program
           </button>
-          <button className="toolbar-btn">
+          <button className="toolbar-btn" onClick={handleTestRun}>
             ▶ Test Run
           </button>
         </div>
@@ -154,6 +214,26 @@ const NodeEditor = ({ onClose }: NodeEditorProps) => {
             <li><strong>Logic:</strong> Conditions, comparisons, mathematical operations</li>
             <li><strong>Output:</strong> Control machines, activate/deactivate, set recipes</li>
           </ul>
+          {lastTestResult && (
+            <div className="test-result">
+              <h4>Last Test Result:</h4>
+              <pre>{lastTestResult}</pre>
+            </div>
+          )}
+          <div className="saved-programs">
+            <h4>Saved Programs ({Object.keys(savedPrograms).length})</h4>
+            <div className="program-list">
+              {Object.entries(savedPrograms).map(([id, prog]) => (
+                <div key={id} className="program-item">
+                  <small>{id}</small>
+                  <button onClick={() => {
+                    setNodes(prog.nodes.map((n, i) => ({ ...n, position: { x: 100 + i * 100, y: 100 } })))
+                    setEdges(prog.connections.map(c => ({ id: c.id, source: c.from, target: c.to })))
+                  }}>Load</button>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </div>

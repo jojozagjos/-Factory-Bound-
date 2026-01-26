@@ -144,7 +144,7 @@ const MultiplayerLobby = ({ mode, isPvP, onStartGame, onCancel }: MultiplayerLob
           <div className="lobby-loading">
             <div className="loading-spinner"></div>
             <p>Connecting to game server...</p>
-            <p className="connection-status">Attempting to connect to {networkManager.isInOfflineMode ? 'offline mode' : 'multiplayer server'}</p>
+            <p className="connection-status">Attempting to connect to {networkManager.isInOfflineMode() ? 'offline mode' : 'multiplayer server'}</p>
           </div>
         </div>
       </div>

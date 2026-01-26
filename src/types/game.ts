@@ -261,6 +261,8 @@ export interface SaveData {
   machines: Machine[]
   techTree: TechNode[]
   gameSettings: GameSettings
+  machineUnlocks?: MachineUnlock[]
+  resourceDeliveries?: ResourceDelivery[]
 }
 
 // Combat

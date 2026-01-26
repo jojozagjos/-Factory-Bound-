@@ -163,13 +163,13 @@ export class CombatSystem {
     const distance = Math.sqrt(dx * dx + dy * dy)
     
     const speed = 0.5
-    const vx = (dx / distance) * speed
-    const vy = (dy / distance) * speed
+    const vx = distance > 0 ? (dx / distance) * speed : 0
+    const vy = distance > 0 ? (dy / distance) * speed : 0
 
     return {
       id: `projectile_${Date.now()}_${Math.random()}`,
       position: { x: turret.position.x, y: turret.position.y },
-      velocity: { x: turret.position.x, y: turret.position.y, vx, vy },
+      velocity: { x: vx, y: vy, vx, vy },
       damage,
       owner: turret.id,
     }
@@ -300,44 +300,55 @@ export class CombatSystem {
   }
 
   /**
-   * Spawn enemies in waves
+   * Spawn enemies in waves with difficulty scaling
    */
   spawnWave(
     waveNumber: number,
     mapWidth: number,
-    mapHeight: number
+    mapHeight: number,
+    difficulty: 'easy' | 'normal' | 'hard' | 'nightmare' = 'normal'
   ): Enemy[] {
     const enemies: Enemy[] = []
-    const enemyCount = Math.min(5 + waveNumber * 2, 50) // Cap at 50 enemies
+    const difficultyMult = { easy: 0.7, normal: 1, hard: 1.5, nightmare: 2 }[difficulty] || 1
+    const baseCount = 5 + waveNumber * 2
+    const enemyCount = Math.min(Math.floor(baseCount * difficultyMult), 100)
 
-    // Spawn points at map edges
     const spawnPoints: Position[] = [
-      { x: 0, y: mapHeight / 2 }, // Left
-      { x: mapWidth, y: mapHeight / 2 }, // Right
-      { x: mapWidth / 2, y: 0 }, // Top
-      { x: mapWidth / 2, y: mapHeight }, // Bottom
+      { x: 0, y: mapHeight / 2 },
+      { x: mapWidth, y: mapHeight / 2 },
+      { x: mapWidth / 2, y: 0 },
+      { x: mapWidth / 2, y: mapHeight },
     ]
 
-    for (let i = 0; i < enemyCount; i++) {
-      const spawnPoint = spawnPoints[i % spawnPoints.length]
-      let enemyType: EnemyType = 'biter' as EnemyType
+    let biters = Math.max(1, Math.floor(enemyCount * 0.6))
+    let spitters = Math.floor(enemyCount * 0.3)
+    let behemoths = Math.floor(enemyCount * 0.1)
 
-      // More advanced enemies in later waves
-      if (waveNumber >= 10) {
-        enemyType = Math.random() < 0.3 ? ('behemoth' as EnemyType) : ('spitter' as EnemyType)
-      } else if (waveNumber >= 5) {
-        enemyType = Math.random() < 0.5 ? ('spitter' as EnemyType) : ('biter' as EnemyType)
-      }
-
-      // Add random offset to spawn position
-      const offset = 5
-      const position = {
-        x: spawnPoint.x + (Math.random() - 0.5) * offset,
-        y: spawnPoint.y + (Math.random() - 0.5) * offset,
-      }
-
-      enemies.push(this.spawnEnemy(enemyType, position, waveNumber))
+    if (waveNumber >= 10) {
+      biters = Math.max(1, Math.floor(enemyCount * 0.3))
+      spitters = Math.floor(enemyCount * 0.5)
+      behemoths = Math.floor(enemyCount * 0.2)
+    } else if (waveNumber >= 5) {
+      biters = Math.max(1, Math.floor(enemyCount * 0.5))
+      spitters = Math.floor(enemyCount * 0.4)
+      behemoths = Math.floor(enemyCount * 0.1)
     }
+
+    const spawnEnemyOfType = (type: EnemyType, count: number) => {
+      for (let i = 0; i < count; i++) {
+        const spawnPoint = spawnPoints[i % spawnPoints.length]
+        const offset = 5
+        const position = {
+          x: spawnPoint.x + (Math.random() - 0.5) * offset,
+          y: spawnPoint.y + (Math.random() - 0.5) * offset,
+        }
+        enemies.push(this.spawnEnemy(type, position, waveNumber))
+      }
+    }
+
+    spawnEnemyOfType('biter' as EnemyType, biters)
+    spawnEnemyOfType('spitter' as EnemyType, spitters)
+    spawnEnemyOfType('behemoth' as EnemyType, behemoths)
 
     return enemies
   }

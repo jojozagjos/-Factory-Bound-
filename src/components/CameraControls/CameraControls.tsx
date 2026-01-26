@@ -28,22 +28,57 @@ const CameraControls = ({ camera, onCameraChange, canvasRef, worldBounds }: Came
 
   // Helper function to clamp camera position within world bounds
   const clampCamera = (newCamera: CameraState): CameraState => {
-    if (!worldBoundsRef.current) return newCamera
-    
+    const wb = worldBoundsRef.current
+    const canvas = canvasRef.current
+    if (!wb || !canvas) return newCamera
+
     const gridSize = 50
-    const maxX = (worldBoundsRef.current.width * gridSize) / 2
-    const maxY = (worldBoundsRef.current.height * gridSize) / 2
-    const minX = -(worldBoundsRef.current.width * gridSize) / 2
-    const minY = -(worldBoundsRef.current.height * gridSize) / 2
-    
-    // Add padding based on zoom to prevent seeing edges
-    const padding = 200 / newCamera.zoom
-    
+    const worldPxW = wb.width * gridSize
+    const worldPxH = wb.height * gridSize
+
+    // Camera.x/y represent world coordinates (pixels) with origin at top-left (0,0)
+    // Clamp so the viewport (half-size in world pixels) stays within world bounds.
+    const halfViewportW = canvas.width / (2 * newCamera.zoom)
+    const halfViewportH = canvas.height / (2 * newCamera.zoom)
+
+    // Compute unclamped min/max based on viewport half-size
+    const rawMinX = halfViewportW
+    const rawMaxX = worldPxW - halfViewportW
+    const rawMinY = halfViewportH
+    const rawMaxY = worldPxH - halfViewportH
+
+    // If viewport is larger than world, lock to center
+    let clampedX: number
+    if (rawMinX >= rawMaxX) {
+      clampedX = worldPxW / 2
+    } else {
+      clampedX = Math.max(rawMinX, Math.min(rawMaxX, newCamera.x))
+    }
+
+    let clampedY: number
+    if (rawMinY >= rawMaxY) {
+      clampedY = worldPxH / 2
+    } else {
+      clampedY = Math.max(rawMinY, Math.min(rawMaxY, newCamera.y))
+    }
+
     return {
       ...newCamera,
-      x: Math.max(minX + padding, Math.min(maxX - padding, newCamera.x)),
-      y: Math.max(minY + padding, Math.min(maxY - padding, newCamera.y)),
+      x: clampedX,
+      y: clampedY,
     }
+  }
+
+  // Compute zoom that fits the entire world into the canvas
+  const computeFitZoom = (): number | null => {
+    const canvas = canvasRef.current
+    const wb = worldBoundsRef.current
+    if (!canvas || !wb) return null
+    const gridSize = 50
+    const worldPxW = wb.width * gridSize
+    const worldPxH = wb.height * gridSize
+    const fitZoom = Math.min(canvas.width / worldPxW, canvas.height / worldPxH)
+    return fitZoom
   }
 
   useEffect(() => {
@@ -52,6 +87,11 @@ const CameraControls = ({ camera, onCameraChange, canvasRef, worldBounds }: Came
 
     let isPanning = false
     let lastMousePos = { x: 0, y: 0 }
+    const PAN_SPEED = 1.6 // tuned pan speed
+
+    // Throttle mousemove updates via requestAnimationFrame to reduce lag
+    let rafScheduled = false
+    let pendingDelta = { dx: 0, dy: 0 }
 
     const handleMouseDown = (e: MouseEvent) => {
       // Left click for panning
@@ -64,20 +104,33 @@ const CameraControls = ({ camera, onCameraChange, canvasRef, worldBounds }: Came
     }
 
     const handleMouseMove = (e: MouseEvent) => {
-      if (isPanning) {
-        const deltaX = e.clientX - lastMousePos.x
-        const deltaY = e.clientY - lastMousePos.y
-        
-        const currentCamera = cameraRef.current
-        const newCamera = clampCamera({
-          ...currentCamera,
-          x: currentCamera.x - deltaX / currentCamera.zoom,
-          y: currentCamera.y - deltaY / currentCamera.zoom,
-        })
-        
-        onCameraChangeRef.current(newCamera)
+      if (!isPanning) return
 
-        lastMousePos = { x: e.clientX, y: e.clientY }
+      const deltaX = e.clientX - lastMousePos.x
+      const deltaY = e.clientY - lastMousePos.y
+
+      // Accumulate pending deltas and schedule an RAF update
+      pendingDelta.dx += deltaX
+      pendingDelta.dy += deltaY
+      lastMousePos = { x: e.clientX, y: e.clientY }
+
+      if (!rafScheduled) {
+        rafScheduled = true
+        requestAnimationFrame(() => {
+          rafScheduled = false
+          const currentCamera = cameraRef.current
+          const dx = pendingDelta.dx
+          const dy = pendingDelta.dy
+          pendingDelta = { dx: 0, dy: 0 }
+
+          const newCamera = clampCamera({
+            ...currentCamera,
+            x: currentCamera.x - (dx / currentCamera.zoom) * PAN_SPEED,
+            y: currentCamera.y - (dy / currentCamera.zoom) * PAN_SPEED,
+          })
+
+          onCameraChangeRef.current(newCamera)
+        })
       }
     }
 
@@ -92,9 +145,10 @@ const CameraControls = ({ camera, onCameraChange, canvasRef, worldBounds }: Came
       e.preventDefault()
       
       const currentCamera = cameraRef.current
-      const zoomSpeed = 0.001
-      const zoomDelta = -e.deltaY * zoomSpeed
-      const newZoom = Math.max(0.25, Math.min(4, currentCamera.zoom + zoomDelta))
+    const zoomSpeed = 0.001
+    const zoomDelta = -e.deltaY * zoomSpeed
+    // Allow zooming out further to fit the whole map (min 0.05)
+    const newZoom = Math.max(0.05, Math.min(8, currentCamera.zoom + zoomDelta))
 
       // Zoom toward mouse position
       const rect = canvas.getBoundingClientRect()
@@ -138,12 +192,39 @@ const CameraControls = ({ camera, onCameraChange, canvasRef, worldBounds }: Came
           onCameraChangeRef.current(newCamera)
           break
         case '0':
-          // Reset camera: if worldBounds provided, center on world; otherwise reset to origin
+          // Reset camera: if worldBounds provided, center on world and fit-to-world; otherwise reset to origin
           const gridSize = 50
-          const centerX = worldBoundsRef.current ? (worldBoundsRef.current.width * gridSize) / 2 : 0
-          const centerY = worldBoundsRef.current ? (worldBoundsRef.current.height * gridSize) / 2 : 0
-          onCameraChangeRef.current({ x: centerX, y: centerY, zoom: 1 })
+          if (worldBoundsRef.current) {
+            const centerX = (worldBoundsRef.current.width * gridSize) / 2
+            const centerY = (worldBoundsRef.current.height * gridSize) / 2
+            const fitZoom = computeFitZoom() ?? 1
+            onCameraChangeRef.current({ x: centerX, y: centerY, zoom: Math.max(0.05, fitZoom) })
+          } else {
+            onCameraChangeRef.current({ x: 0, y: 0, zoom: 1 })
+          }
           break
+        case 'f':
+        case 'F':
+          // Fit to world
+          const fit = computeFitZoom()
+          if (fit !== null) {
+            const gridSizeF = 50
+            const cx = (worldBoundsRef.current!.width * gridSizeF) / 2
+            const cy = (worldBoundsRef.current!.height * gridSizeF) / 2
+            onCameraChangeRef.current({ x: cx, y: cy, zoom: Math.max(0.05, fit) })
+          }
+          break
+      }
+    }
+
+    // Double-click on canvas to fit-to-world
+    const handleDoubleClick = () => {
+      const fit = computeFitZoom()
+      if (fit !== null) {
+        const gridSizeF = 50
+        const cx = (worldBoundsRef.current!.width * gridSizeF) / 2
+        const cy = (worldBoundsRef.current!.height * gridSizeF) / 2
+        onCameraChangeRef.current({ x: cx, y: cy, zoom: Math.max(0.05, fit) })
       }
     }
 
@@ -153,6 +234,7 @@ const CameraControls = ({ camera, onCameraChange, canvasRef, worldBounds }: Came
     canvas.addEventListener('mouseleave', handleMouseUp)
     canvas.addEventListener('wheel', handleWheel, { passive: false })
     canvas.addEventListener('contextmenu', handleContextMenu)
+    canvas.addEventListener('dblclick', handleDoubleClick)
     document.addEventListener('keydown', handleKeyDown)
 
     return () => {
@@ -162,6 +244,7 @@ const CameraControls = ({ camera, onCameraChange, canvasRef, worldBounds }: Came
       canvas.removeEventListener('mouseleave', handleMouseUp)
       canvas.removeEventListener('wheel', handleWheel)
       canvas.removeEventListener('contextmenu', handleContextMenu)
+      canvas.removeEventListener('dblclick', handleDoubleClick)
       document.removeEventListener('keydown', handleKeyDown)
     }
   }, [canvasRef])

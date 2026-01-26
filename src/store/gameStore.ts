@@ -25,6 +25,7 @@ import { ResourceSystem } from '../systems/ResourceSystem'
 import { CombatSystem } from '../systems/CombatSystem'
 import { GameModeManager } from '../systems/GameModeManager'
 import { ProgressionSystem } from '../engine/progression/ProgressionSystem'
+import { MachineUnlockSystem } from '../systems/MachineUnlockSystem'
 
 // Enemy spawn configuration constants
 const ENEMY_SPAWN_CONFIG = {
@@ -36,24 +37,19 @@ const ENEMY_SPAWN_CONFIG = {
   factoryBase: { health: 500, spawnRate: 10 }, // enemies per minute
 }
 
+const machineUnlockSystem = new MachineUnlockSystem()
+const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value))
+const getUnlockState = () => {
+  const { unlocks, deliveries } = machineUnlockSystem.getState()
+  return { unlocks: clone(unlocks), deliveries: clone(deliveries) }
+}
+
 // Helper function to generate unique IDs
 function generateUniqueId(prefix: string): string {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
 }
 
-// Helper function to unlock dependent technologies
-function unlockDependentTechs(techTree: TechNode[], unlockedTechId: string): void {
-  techTree.forEach(tech => {
-    if (tech.dependencies.includes(unlockedTechId)) {
-      const allDepsResearched = tech.dependencies.every(depId =>
-        techTree.find(dep => dep.id === depId)?.researched ?? false
-      )
-      if (allDepsResearched) {
-        tech.researched = true
-      }
-    }
-  })
-}
+// (removed) unlockDependentTechs helper — dependency unlocking handled inline in `unlockTech`
 
 interface GameState {
   // Session
@@ -72,6 +68,8 @@ interface GameState {
   techTree: TechNode[]
   machineUnlocks: MachineUnlock[] // Builderment-style unlocking
   resourceDeliveries: ResourceDelivery[] // Track resources delivered to base
+  recentUnlocks: MachineType[] // Newly unlocked machines for UI hints
+  trackedUnlocks: MachineType[] // Player-selected unlocks to track in the UI
   
   // Global Stats (persists across all saves)
   globalStats: GlobalStats
@@ -125,6 +123,9 @@ interface GameState {
   deliverResourceToBase: (itemName: string, quantity: number) => void
   checkAndUnlockMachines: () => void
   isMachineUnlocked: (machineType: MachineType) => boolean
+  markUnlockSeen: (machineType: MachineType) => void
+  toggleTrackUnlock: (machineType: MachineType) => void
+  setTrackedUnlocks: (list: MachineType[]) => void
   addEnemyFactory: (factory: EnemyFactory) => void
   removeEnemyFactory: (id: string) => void
 }
@@ -148,36 +149,15 @@ export const useGameStore = create<GameState>()(
     profilePictureFile: null,
     
     // Initialize machine unlocks (Builderment-style progression)
-    machineUnlocks: [
-      // Tier 0 - Always unlocked from start
-      { machineType: 'belt' as MachineType, requiredDeliveries: [], unlocked: true, order: 0 },
-      { machineType: 'inserter' as MachineType, requiredDeliveries: [], unlocked: true, order: 0 },
-      { machineType: 'miner' as MachineType, requiredDeliveries: [], unlocked: true, order: 0 },
-      { machineType: 'smelter' as MachineType, requiredDeliveries: [], unlocked: true, order: 0 },
-      { machineType: 'storage' as MachineType, requiredDeliveries: [], unlocked: true, order: 0 },
-      
-      // Tier 1 - Requires basic resources
-      { machineType: 'assembler' as MachineType, requiredDeliveries: [
-        { id: 'iron_plate', name: 'iron_plate', quantity: 30 },
-        { id: 'copper_plate', name: 'copper_plate', quantity: 20 }
-      ], unlocked: false, order: 1 },
-      
-      // Tier 2 - Advanced machines
-      { machineType: 'power_plant' as MachineType, requiredDeliveries: [
-        { id: 'iron_plate', name: 'iron_plate', quantity: 50 },
-        { id: 'copper_plate', name: 'copper_plate', quantity: 50 },
-        { id: 'iron_gear', name: 'iron_gear', quantity: 30 }
-      ], unlocked: false, order: 2 },
-      
-      { machineType: 'turret' as MachineType, requiredDeliveries: [
-        { id: 'iron_plate', name: 'iron_plate', quantity: 40 },
-        { id: 'copper_plate', name: 'copper_plate', quantity: 30 },
-        { id: 'electronic_circuit', name: 'electronic_circuit', quantity: 20 }
-      ], unlocked: false, order: 2 },
-    ],
+    machineUnlocks: getUnlockState().unlocks,
     
     // Track resource deliveries to base
-    resourceDeliveries: [],
+    resourceDeliveries: getUnlockState().deliveries,
+
+    // Track recently unlocked machines for UI hints
+    recentUnlocks: [],
+    // Tracked unlocks: player-selected machines to monitor in Unlock Progress
+    trackedUnlocks: [],
     
     // Global Stats - load from localStorage on init
     globalStats: (() => {
@@ -352,6 +332,8 @@ export const useGameStore = create<GameState>()(
         machines: state.machines,
         techTree: state.techTree,
         gameSettings: state.session?.settings ?? emptySettings,
+        machineUnlocks: machineUnlockSystem.getState().unlocks,
+        resourceDeliveries: machineUnlockSystem.getState().deliveries,
       }
     },
     
@@ -359,6 +341,17 @@ export const useGameStore = create<GameState>()(
       state.worldMap = data.world
       state.machines = data.machines
       state.techTree = data.techTree
+
+      if (data.machineUnlocks && data.resourceDeliveries) {
+        machineUnlockSystem.setState({ unlocks: clone(data.machineUnlocks), deliveries: clone(data.resourceDeliveries) })
+      } else {
+        machineUnlockSystem.reset()
+      }
+
+      const { unlocks, deliveries } = getUnlockState()
+      state.machineUnlocks = unlocks
+      state.resourceDeliveries = deliveries
+      state.recentUnlocks = []
     }),
 
     startGame: (settings, gameMode) => set((state) => {
@@ -387,6 +380,13 @@ export const useGameStore = create<GameState>()(
         state: 'active',
         settings: fullSettings,
       }
+
+      // Reset unlock progression for a fresh session
+      machineUnlockSystem.reset()
+      const freshUnlocks = getUnlockState()
+      state.machineUnlocks = freshUnlocks.unlocks
+      state.resourceDeliveries = freshUnlocks.deliveries
+      state.recentUnlocks = []
       
       // Initialize player if not exists
       if (!state.currentPlayer) {
@@ -451,11 +451,9 @@ export const useGameStore = create<GameState>()(
         state.machines.push(...pvpBases)
         console.log(`🏭 PVP mode: Placed ${pvpBases.length} bases for ${fullSettings.maxPlayers} players`)
       } else {
-        // Single-player/Co-op mode: Place one base in center (Builderment-style)
-        const centerX = Math.floor(state.worldMap.width / 2)
-        const centerY = Math.floor(state.worldMap.height / 2)
-        const startingBase = state.buildingSystem.createStartingBase({ x: centerX, y: centerY })
-        state.machines.push(startingBase)
+        // Single-player/Co-op mode: do NOT auto-place a starter base.
+        // The player must place their starter base in-game before other machines can be built.
+        console.log('Single-player: starter base will be placed by the player in-game')
       }
       
       state.isRunning = true
@@ -498,6 +496,9 @@ export const useGameStore = create<GameState>()(
         // Check for resource deliveries to base (Builderment-style)
         const base = draft.machines.find(m => m.type === 'base')
         if (base && base.baseEntrances) {
+          let deliveredAny = false
+          const newlyUnlocked: MachineType[] = []
+
           // Check each entrance for nearby items on belts/inserters
           base.baseEntrances.forEach(entrance => {
             // Find machines at entrance positions that might have items
@@ -512,16 +513,13 @@ export const useGameStore = create<GameState>()(
                 const itemsToDeliver = [...machine.inventory]
                 itemsToDeliver.forEach(item => {
                   if (item.quantity > 0) {
-                    // Deliver resource to base
-                    let delivery = draft.resourceDeliveries.find(d => d.itemName === item.name)
-                    if (!delivery) {
-                      delivery = { itemName: item.name, quantityDelivered: 0, quantityRequired: 0 }
-                      draft.resourceDeliveries.push(delivery)
-                    }
-                    delivery.quantityDelivered += item.quantity
-                    
-                    // Update global stats
+                    const { unlockedMachines } = machineUnlockSystem.deliverToBase(item.name, item.quantity)
+                    deliveredAny = true
                     draft.globalStats.totalResourcesGathered += item.quantity
+                    if (unlockedMachines.length) {
+                      newlyUnlocked.push(...unlockedMachines)
+                      console.log(`🎉 Unlocked machines: ${unlockedMachines.join(', ')}`)
+                    }
                   }
                 })
                 // Clear machine inventory after successful delivery
@@ -529,21 +527,15 @@ export const useGameStore = create<GameState>()(
               }
             })
           })
-          
-          // Check and unlock machines based on deliveries
-          draft.machineUnlocks.forEach(unlock => {
-            if (unlock.unlocked) return
-            
-            const allRequirementsMet = unlock.requiredDeliveries.every(required => {
-              const delivery = draft.resourceDeliveries.find(d => d.itemName === required.name)
-              return delivery && delivery.quantityDelivered >= required.quantity
-            })
-            
-            if (allRequirementsMet) {
-              unlock.unlocked = true
-              console.log(`🎉 Unlocked machine: ${unlock.machineType}`)
+
+          if (deliveredAny) {
+            const { unlocks, deliveries } = getUnlockState()
+            draft.machineUnlocks = unlocks
+            draft.resourceDeliveries = deliveries
+            if (newlyUnlocked.length) {
+              draft.recentUnlocks = Array.from(new Set([...draft.recentUnlocks, ...newlyUnlocked]))
             }
-          })
+          }
         }
         
         // Update game mode manager
@@ -630,6 +622,13 @@ export const useGameStore = create<GameState>()(
       const { buildingSystem, worldMap, machines, currentPlayer } = state
       
       if (!worldMap || !currentPlayer) return false
+
+      // Prevent building anything except the starting base until a base exists
+      const hasBase = state.machines.some(m => m.type === 'base')
+      if (!hasBase && machineType !== 'base') {
+        console.log('You must place a base first before building other machines')
+        return false
+      }
       
       // Check if machine is unlocked (Builderment-style)
       if (!state.isMachineUnlocked(machineType)) {
@@ -795,44 +794,40 @@ export const useGameStore = create<GameState>()(
 
     // Builderment-style resource delivery and unlocking
     deliverResourceToBase: (itemName, quantity) => set((state) => {
-      // Find or create delivery tracking
-      let delivery = state.resourceDeliveries.find(d => d.itemName === itemName)
-      if (!delivery) {
-        delivery = { itemName, quantityDelivered: 0, quantityRequired: 0 }
-        state.resourceDeliveries.push(delivery)
+      const { unlockedMachines } = machineUnlockSystem.deliverToBase(itemName, quantity)
+      const { unlocks, deliveries } = getUnlockState()
+      state.machineUnlocks = unlocks
+      state.resourceDeliveries = deliveries
+      if (unlockedMachines.length) {
+        state.recentUnlocks = Array.from(new Set([...state.recentUnlocks, ...unlockedMachines]))
+        console.log(`Unlocked machines: ${unlockedMachines.join(', ')}`)
       }
-      
-      // Add to delivered quantity
-      delivery.quantityDelivered += quantity
-      
-      // Update global stats
       state.globalStats.totalResourcesGathered += quantity
       localStorage.setItem('factory_bound_global_stats', JSON.stringify(state.globalStats))
     }),
 
     checkAndUnlockMachines: () => set((state) => {
-      // Check each locked machine
-      state.machineUnlocks.forEach(unlock => {
-        if (unlock.unlocked) return
-        
-        // Check if all required deliveries are met
-        const allRequirementsMet = unlock.requiredDeliveries.every(required => {
-          const delivery = state.resourceDeliveries.find(d => d.itemName === required.name)
-          return delivery && delivery.quantityDelivered >= required.quantity
-        })
-        
-        if (allRequirementsMet) {
-          unlock.unlocked = true
-          console.log(`Unlocked machine: ${unlock.machineType}`)
-        }
-      })
+      const { unlocks, deliveries } = getUnlockState()
+      state.machineUnlocks = unlocks
+      state.resourceDeliveries = deliveries
     }),
 
-    isMachineUnlocked: (machineType) => {
-      const state = get()
-      const unlock = state.machineUnlocks.find(u => u.machineType === machineType)
-      return unlock?.unlocked ?? false
-    },
+    isMachineUnlocked: (machineType) => machineUnlockSystem.isMachineUnlocked(machineType),
+
+    markUnlockSeen: (machineType) => set((state) => {
+      state.recentUnlocks = state.recentUnlocks.filter(type => type !== machineType)
+    }),
+    toggleTrackUnlock: (machineType) => set((state) => {
+      const idx = state.trackedUnlocks.indexOf(machineType)
+      if (idx >= 0) {
+        state.trackedUnlocks.splice(idx, 1)
+      } else {
+        state.trackedUnlocks.push(machineType)
+      }
+    }),
+    setTrackedUnlocks: (list) => set((state) => {
+      state.trackedUnlocks = list
+    }),
 
     addEnemyFactory: (factory: EnemyFactory) => set((state) => {
       state.enemyFactories.push(factory)

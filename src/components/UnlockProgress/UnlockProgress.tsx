@@ -1,9 +1,12 @@
+import { useState } from 'react'
 import { useGameStore } from '../../store/gameStore'
 import './UnlockProgress.css'
 
 const UnlockProgress = () => {
   const machineUnlocks = useGameStore(state => state.machineUnlocks)
   const resourceDeliveries = useGameStore(state => state.resourceDeliveries)
+  const tracked = useGameStore(state => state.trackedUnlocks)
+  const toggleTrack = useGameStore(state => state.toggleTrackUnlock)
 
   // Show only locked machines
   const lockedMachines = machineUnlocks.filter(u => !u.unlocked && u.requiredDeliveries.length > 0)
@@ -14,6 +17,10 @@ const UnlockProgress = () => {
 
   // Sort by order/tier
   const sorted = [...lockedMachines].sort((a, b) => a.order - b.order)
+
+  const trackedMachines = tracked
+    .map(t => lockedMachines.find(l => l.machineType === t))
+    .filter(Boolean) as typeof lockedMachines
 
   // Get machine icons/names
   const machineIcons: Record<string, string> = {
@@ -34,13 +41,16 @@ const UnlockProgress = () => {
     turret: 'Gun Turret',
   }
 
+  const [openManage, setOpenManage] = useState(false)
+
   return (
     <div className="unlock-progress">
       <div className="unlock-header">
         <h3>🔒 Unlock Progress</h3>
+        <button className="manage-unlocks" onClick={() => setOpenManage(true)}>Manage</button>
       </div>
       <div className="unlock-list">
-        {sorted.slice(0, 3).map(unlock => { // Show next 3 unlocks
+        {(trackedMachines.length > 0 ? trackedMachines : sorted.slice(0, 3)).map(unlock => { // Show tracked or next 3 unlocks
           const icon = machineIcons[unlock.machineType] || '❓'
           const name = machineNames[unlock.machineType] || unlock.machineType
 
@@ -77,6 +87,29 @@ const UnlockProgress = () => {
           )
         })}
       </div>
+
+      {openManage && (
+        <div className="unlock-manage-modal">
+          <div className="unlock-manage-panel">
+            <div className="manage-header">
+              <h3>Manage Tracked Unlocks</h3>
+              <button onClick={() => setOpenManage(false)}>Close</button>
+            </div>
+            <div className="manage-list">
+              {sorted.map(u => (
+                <label key={u.machineType} className="manage-row">
+                  <input
+                    type="checkbox"
+                    checked={tracked.includes(u.machineType)}
+                    onChange={() => toggleTrack(u.machineType)}
+                  />
+                  <span className="manage-name">{machineNames[u.machineType] || u.machineType}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
