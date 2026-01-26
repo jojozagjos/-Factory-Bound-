@@ -29,6 +29,7 @@ const GameCanvas = () => {
       zoom: 1
     }
   })
+  const cameraRef = useRef<CameraState>(camera)
   const [showGrid, setShowGrid] = useState(true)
   const animationTimeRef = useRef(0) // For belt animation
   const particlesRef = useRef<Array<{
@@ -47,6 +48,17 @@ const GameCanvas = () => {
   const lod4MapCacheRef = useRef<HTMLCanvasElement | null>(null)
   const lod2MachineCacheRef = useRef<HTMLCanvasElement | null>(null)
   const lod4MachineCacheRef = useRef<HTMLCanvasElement | null>(null)
+  // LOD blending state
+  const lastCacheIdRef = useRef<number>(0)
+  const lastCacheCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  const prevCacheCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  const lodChangeTimeRef = useRef<number>(0)
+  const BLEND_DURATION = 200 // ms
+
+  const lastMachineCacheIdRef = useRef<number>(0)
+  const lastMachineCacheCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  const prevMachineCacheCanvasRef = useRef<HTMLCanvasElement | null>(null)
+  const machineLodChangeTimeRef = useRef<number>(0)
   const lastFrameRef = useRef<number>(0)
 
   // Update camera position when worldMap loads
@@ -60,6 +72,9 @@ const GameCanvas = () => {
       })
     }
   }, [worldMap])
+
+  // keep ref in sync when camera state changes
+  useEffect(() => { cameraRef.current = camera }, [camera])
 
   // Build an offscreen low-resolution cache (1px per tile) for fast zoomed-out rendering
   useEffect(() => {
@@ -193,6 +208,8 @@ const GameCanvas = () => {
     machines.forEach(m => {
       const x = m.position.x
       const y = m.position.y
+      // Don't pre-render base marker if base hasn't been placed yet
+      if (m.type === 'base' && (!m.baseEntrances || m.baseEntrances.length === 0)) return
       let col = '#ffffff'
       switch (m.type) {
         case 'base': col = '#ffd966'; break
@@ -227,6 +244,8 @@ const GameCanvas = () => {
     ctx.imageSmoothingEnabled = false
 
     machines.forEach(m => {
+      // Don't pre-render base marker if base hasn't been placed yet
+      if (m.type === 'base' && (!m.baseEntrances || m.baseEntrances.length === 0)) return
       const x = m.position.x * 2
       const y = m.position.y * 2
       let col = '#ffffff'
@@ -263,6 +282,8 @@ const GameCanvas = () => {
     ctx.imageSmoothingEnabled = false
 
     machines.forEach(m => {
+      // Don't pre-render base marker if base hasn't been placed yet
+      if (m.type === 'base' && (!m.baseEntrances || m.baseEntrances.length === 0)) return
       const x = m.position.x * 4
       const y = m.position.y * 4
       let col = '#ffffff'
@@ -313,17 +334,18 @@ const GameCanvas = () => {
       const LOD3_ZOOM = 1.0
       // Frame rate cap depending on zoom (60fps normally, 30fps when using LOD caches)
       const now = performance.now()
-      const targetMs = camera.zoom <= LOD3_ZOOM ? (1000 / 30) : (1000 / 60)
-      if (now - lastFrameRef.current < targetMs) {
+      const delta = now - (lastFrameRef.current || now)
+      const targetMs = cameraRef.current.zoom <= LOD3_ZOOM ? (1000 / 30) : (1000 / 60)
+      if (delta < targetMs) {
         animationFrameId = requestAnimationFrame(render)
         return
       }
       lastFrameRef.current = now
 
       // Update animation time for belt animations
-      animationTimeRef.current += (now - (lastFrameRef.current || now)) / 1000
+      animationTimeRef.current += delta / 1000
 
-      const skipEffects = camera.zoom <= LOD3_ZOOM
+      const skipEffects = cameraRef.current.zoom <= LOD3_ZOOM
       // Update particles (skip heavy updates when zoomed out)
       if (!skipEffects) {
         particlesRef.current = particlesRef.current.filter(p => {
@@ -343,10 +365,11 @@ const GameCanvas = () => {
       ctx.restore()
 
       // Apply camera transform
+      const cam = cameraRef.current
       ctx.save()
       ctx.translate(canvas.width / 2, canvas.height / 2)
-      ctx.scale(camera.zoom, camera.zoom)
-      ctx.translate(-camera.x, -camera.y)
+      ctx.scale(cam.zoom, cam.zoom)
+      ctx.translate(-cam.x, -cam.y)
 
       const gridSize = 50
 
@@ -358,37 +381,67 @@ const GameCanvas = () => {
 
       // Draw world tiles (if map exists)
       if (worldMap) {
-        visibleLeft = Math.floor((camera.x - canvas.width / (2 * camera.zoom)) / gridSize) - 1
-        visibleRight = Math.ceil((camera.x + canvas.width / (2 * camera.zoom)) / gridSize) + 1
-        visibleTop = Math.floor((camera.y - canvas.height / (2 * camera.zoom)) / gridSize) - 1
-        visibleBottom = Math.ceil((camera.y + canvas.height / (2 * camera.zoom)) / gridSize) + 1
+        const cam = cameraRef.current
+        visibleLeft = Math.floor((cam.x - canvas.width / (2 * cam.zoom)) / gridSize) - 1
+        visibleRight = Math.ceil((cam.x + canvas.width / (2 * cam.zoom)) / gridSize) + 1
+        visibleTop = Math.floor((cam.y - canvas.height / (2 * cam.zoom)) / gridSize) - 1
+        visibleBottom = Math.ceil((cam.y + canvas.height / (2 * cam.zoom)) / gridSize) + 1
 
         // Choose appropriate LOD cache based on zoom
-        const cache = (camera.zoom <= LOD1_ZOOM
-          ? fullMapCacheRef.current
-          : camera.zoom <= LOD2_ZOOM
-            ? lod2MapCacheRef.current
-            : camera.zoom <= LOD3_ZOOM
-              ? lod4MapCacheRef.current
-              : null)
-        const machineCache = (camera.zoom <= LOD1_ZOOM
-          ? machineCacheRef.current
-          : camera.zoom <= LOD2_ZOOM
-            ? lod2MachineCacheRef.current
-            : camera.zoom <= LOD3_ZOOM
-              ? lod4MachineCacheRef.current
-              : null)
+        const chosenCacheId = cam.zoom <= LOD1_ZOOM ? 1 : cam.zoom <= LOD2_ZOOM ? 2 : cam.zoom <= LOD3_ZOOM ? 3 : 0
+        const cache = (chosenCacheId === 1 ? fullMapCacheRef.current : chosenCacheId === 2 ? lod2MapCacheRef.current : chosenCacheId === 3 ? lod4MapCacheRef.current : null)
+
+        const chosenMachineCacheId = cam.zoom <= LOD1_ZOOM ? 1 : cam.zoom <= LOD2_ZOOM ? 2 : cam.zoom <= LOD3_ZOOM ? 3 : 0
+        const machineCache = (chosenMachineCacheId === 1 ? machineCacheRef.current : chosenMachineCacheId === 2 ? lod2MachineCacheRef.current : chosenMachineCacheId === 3 ? lod4MachineCacheRef.current : null)
+
+        // Detect cache switch and start blend
+        if (chosenCacheId !== lastCacheIdRef.current) {
+          prevCacheCanvasRef.current = lastCacheCanvasRef.current
+          lastCacheCanvasRef.current = cache
+          lastCacheIdRef.current = chosenCacheId
+          lodChangeTimeRef.current = now
+        }
+        if (chosenMachineCacheId !== lastMachineCacheIdRef.current) {
+          prevMachineCacheCanvasRef.current = lastMachineCacheCanvasRef.current
+          lastMachineCacheCanvasRef.current = machineCache
+          lastMachineCacheIdRef.current = chosenMachineCacheId
+          machineLodChangeTimeRef.current = now
+        }
         if (cache) {
           ctx.imageSmoothingEnabled = false
           const worldPxW = worldMap.width * gridSize
           const worldPxH = worldMap.height * gridSize
-          ctx.drawImage(cache, 0, 0, cache.width, cache.height, 0, 0, worldPxW, worldPxH)
 
-          // Fast path: draw simplified machine layer (1px markers stretched)
-          if (machineCache) {
-            ctx.globalAlpha = 0.95
-            ctx.drawImage(machineCache, 0, 0, machineCache.width, machineCache.height, 0, 0, worldPxW, worldPxH)
+          // Blend world caches when transitioning
+          const elapsed = now - lodChangeTimeRef.current
+          const t = Math.min(1, Math.max(0, elapsed / BLEND_DURATION))
+          const prev = prevCacheCanvasRef.current
+          if (prev && t < 1) {
+            ctx.globalAlpha = 1 - t
+            ctx.drawImage(prev, 0, 0, prev.width, prev.height, 0, 0, worldPxW, worldPxH)
+            ctx.globalAlpha = t
+            ctx.drawImage(lastCacheCanvasRef.current || cache, 0, 0, (lastCacheCanvasRef.current || cache)!.width, (lastCacheCanvasRef.current || cache)!.height, 0, 0, worldPxW, worldPxH)
             ctx.globalAlpha = 1
+          } else {
+            ctx.drawImage(cache, 0, 0, cache.width, cache.height, 0, 0, worldPxW, worldPxH)
+          }
+
+          // Fast path: draw simplified machine layer (1px markers stretched) with blending
+          const prevMachine = prevMachineCacheCanvasRef.current
+          const mElapsed = now - machineLodChangeTimeRef.current
+          const mt = Math.min(1, Math.max(0, mElapsed / BLEND_DURATION))
+          if (machineCache) {
+            if (prevMachine && mt < 1) {
+              ctx.globalAlpha = 1 - mt
+              ctx.drawImage(prevMachine, 0, 0, prevMachine.width, prevMachine.height, 0, 0, worldPxW, worldPxH)
+              ctx.globalAlpha = mt
+              ctx.drawImage(lastMachineCacheCanvasRef.current || machineCache, 0, 0, (lastMachineCacheCanvasRef.current || machineCache)!.width, (lastMachineCacheCanvasRef.current || machineCache)!.height, 0, 0, worldPxW, worldPxH)
+              ctx.globalAlpha = 1
+            } else {
+              ctx.globalAlpha = 0.95
+              ctx.drawImage(machineCache, 0, 0, machineCache.width, machineCache.height, 0, 0, worldPxW, worldPxH)
+              ctx.globalAlpha = 1
+            }
           }
         } else {
           // Draw only visible tiles
@@ -513,7 +566,7 @@ const GameCanvas = () => {
       // Draw grid overlay (optional, for Builderment-style look)
       if (showGrid) {
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)'
-        ctx.lineWidth = 1 / camera.zoom
+        ctx.lineWidth = 1 / cam.zoom
         for (let x = Math.max(0, visibleLeft); x <= Math.min(worldMap?.width || 0, visibleRight); x++) {
           ctx.beginPath()
           ctx.moveTo(x * gridSize, Math.max(0, visibleTop) * gridSize)
@@ -802,7 +855,7 @@ const GameCanvas = () => {
         const x = enemy.position.x * gridSize
         const y = enemy.position.y * gridSize
 
-        if (camera.zoom <= LOD3_ZOOM) {
+        if (cam.zoom <= LOD3_ZOOM) {
           // Simplified enemy marker when zoomed out
           ctx.fillStyle = '#ef4444'
           ctx.fillRect(x - 4, y - 4, 8, 8)
@@ -833,7 +886,7 @@ const GameCanvas = () => {
         const x = projectile.position.x * gridSize
         const y = projectile.position.y * gridSize
 
-        if (camera.zoom <= LOD3_ZOOM) {
+        if (cam.zoom <= LOD3_ZOOM) {
           ctx.fillStyle = '#fbbf24'
           ctx.fillRect(x - 2, y - 2, 4, 4)
           return
@@ -880,7 +933,7 @@ const GameCanvas = () => {
         cancelAnimationFrame(animationFrameId)
       }
     }
-  }, [machines, enemies, projectiles, worldMap, selectedMachine, buildingMode, ghostPosition, camera, showGrid])
+  }, [machines, enemies, projectiles, worldMap, selectedMachine, buildingMode, ghostPosition, showGrid])
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current
