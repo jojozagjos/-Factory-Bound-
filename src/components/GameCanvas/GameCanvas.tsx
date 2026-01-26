@@ -407,6 +407,7 @@ const GameCanvas = () => {
           lastMachineCacheIdRef.current = chosenMachineCacheId
           machineLodChangeTimeRef.current = now
         }
+        let didDrawMap = false
         if (cache) {
           ctx.imageSmoothingEnabled = false
           const worldPxW = worldMap.width * gridSize
@@ -425,6 +426,7 @@ const GameCanvas = () => {
           } else {
             ctx.drawImage(cache, 0, 0, cache.width, cache.height, 0, 0, worldPxW, worldPxH)
           }
+          didDrawMap = true
 
           // Fast path: draw simplified machine layer (1px markers stretched) with blending
           const prevMachine = prevMachineCacheCanvasRef.current
@@ -445,10 +447,13 @@ const GameCanvas = () => {
           }
         } else {
           // Draw only visible tiles
+          let drewAnyTile = false
           for (let tileY = Math.max(0, visibleTop); tileY < Math.min(worldMap.height, visibleBottom); tileY++) {
             for (let tileX = Math.max(0, visibleLeft); tileX < Math.min(worldMap.width, visibleRight); tileX++) {
               const tile = worldMap.tiles.get(`${tileX},${tileY}`)
               if (!tile) continue
+
+              drewAnyTile = true
 
               const screenX = tile.x * gridSize
               const screenY = tile.y * gridSize
@@ -559,6 +564,21 @@ const GameCanvas = () => {
                 ctx.restore()
               }
             }
+          }
+          didDrawMap = didDrawMap || drewAnyTile
+        }
+        // Defensive fallback: if nothing was drawn (cache missing or tile loop empty), draw fullMapCache if available or a simple placeholder
+        if (!didDrawMap) {
+          const fallback = fullMapCacheRef.current
+          if (fallback) {
+            ctx.imageSmoothingEnabled = false
+            const worldPxW = worldMap.width * gridSize
+            const worldPxH = worldMap.height * gridSize
+            ctx.drawImage(fallback, 0, 0, fallback.width, fallback.height, 0, 0, worldPxW, worldPxH)
+          } else {
+            // Simple visible placeholder
+            ctx.fillStyle = '#123456'
+            ctx.fillRect(0, 0, Math.min(worldMap.width * gridSize, canvas.width), Math.min(worldMap.height * gridSize, canvas.height))
           }
         }
       }
