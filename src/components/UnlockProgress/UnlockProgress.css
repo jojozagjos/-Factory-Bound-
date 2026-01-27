@@ -2,16 +2,16 @@
   position: fixed;
   top: 80px;
   right: 20px;
-  background: linear-gradient(135deg, rgba(26, 26, 46, 0.95) 0%, rgba(15, 15, 30, 0.95) 100%);
-  border: 2px solid rgba(74, 158, 255, 0.3);
-  border-radius: 12px;
-  padding: 15px;
-  min-width: 280px;
-  max-width: 350px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(10px);
-  z-index: 100;
-  animation: slideInRight 0.3s ease-out;
+  background: linear-gradient(135deg, rgba(18, 20, 30, 0.98) 0%, rgba(10, 12, 20, 0.98) 100%);
+  border: 1px solid rgba(74, 158, 255, 0.14);
+  border-radius: 10px;
+  padding: 12px;
+  min-width: 300px;
+  max-width: 380px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(6px);
+  z-index: 900; /* sit under HUD inventory so inventory can overlay */
+  animation: slideInRight 0.24s ease-out;
 }
 
 @keyframes slideInRight {
@@ -26,9 +26,13 @@
 }
 
 .unlock-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   margin-bottom: 12px;
   padding-bottom: 10px;
-  border-bottom: 1px solid rgba(74, 158, 255, 0.2);
+  border-bottom: 1px solid rgba(74, 158, 255, 0.08);
+  position: relative;
 }
 
 .unlock-header h3 {
@@ -39,13 +43,13 @@
 }
 
 .manage-unlocks {
-  float: right;
   background: transparent;
   border: 1px solid rgba(255,255,255,0.06);
   color: #dbeafe;
   padding: 6px 10px;
   border-radius: 8px;
   cursor: pointer;
+  margin-left: auto; /* keep button to the right without overlapping header content */
 }
 
 .unlock-manage-modal {
@@ -75,8 +79,10 @@
 }
 
 .manage-list { display:flex; flex-direction:column; gap:8px; max-height:60vh; overflow:auto; }
-.manage-row { display:flex; align-items:center; gap:12px; color:#e6eef8 }
+.manage-row { display:flex; align-items:center; gap:12px; color:#e6eef8; justify-content:space-between }
+.manage-left { display:flex; align-items:center; gap:12px }
 .manage-name { font-weight:600 }
+.manage-status { font-size:0.85rem; color:#9fb6ff }
 
 .unlock-list {
   display: flex;
@@ -107,6 +113,16 @@
   font-weight: 600;
   font-size: 1rem;
 }
+.status-badge {
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.04);
+  color: #cbd5ff;
+  margin-left: 8px;
+}
+.status-badge.unlocked { background: linear-gradient(90deg,#16a34a,#4ade80); color: #04260f }
+.status-badge.locked { background: rgba(255,255,255,0.04); color: #9aa7d9 }
 
 .unlock-requirements {
   display: flex;

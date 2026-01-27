@@ -65,12 +65,25 @@ const UnlockProgress = () => {
         {(trackedMachines.length > 0 ? trackedMachines : sorted.slice(0, 3)).map(unlock => { // Show tracked or next 3 unlocks
           const icon = machineIcons[unlock.machineType] || '❓'
           const name = machineNames[unlock.machineType] || unlock.machineType
+          const isUnlocked = !!unlock.unlocked
+
+          // Compute an overall percent for display (average of requirements)
+          const percent = Math.floor(unlock.requiredDeliveries.length > 0
+            ? (unlock.requiredDeliveries.reduce((sum, req) => {
+                const d = resourceDeliveries.find(r => r.itemName === req.name)
+                const delivered = d?.quantityDelivered ?? 0
+                return sum + (delivered / req.quantity)
+              }, 0) / unlock.requiredDeliveries.length) * 100
+            : 0)
 
           return (
             <div key={unlock.machineType} className="unlock-item">
               <div className="unlock-machine">
                 <span className="unlock-icon">{icon}</span>
                 <span className="unlock-name">{name}</span>
+                <span className={`status-badge ${isUnlocked ? 'unlocked' : 'locked'}`}>
+                  {isUnlocked ? 'Unlocked' : `${Math.max(0, Math.min(100, percent))}%`}
+                </span>
               </div>
               <div className="unlock-requirements">
                 {unlock.requiredDeliveries.map(required => {
@@ -83,7 +96,7 @@ const UnlockProgress = () => {
                   return (
                     <div key={required.name} className="requirement-item">
                       <div className="requirement-text">
-                        <span className={isMet ? 'met' : ''}>{friendly} — </span>
+                        <span className={isMet ? 'met' : ''}>{friendly}</span>
                         <span className={isMet ? 'met' : ''}>{delivered} / {required.quantity}</span>
                       </div>
                       <div className="requirement-bar">
@@ -103,24 +116,30 @@ const UnlockProgress = () => {
 
       {openManage && (
         <div className="unlock-manage-modal">
-          <div className="unlock-manage-panel">
-            <div className="manage-header">
-              <h3>Manage Tracked Unlocks</h3>
-              <button onClick={() => setOpenManage(false)}>Close</button>
+            <div className="unlock-manage-panel">
+              <div className="manage-header">
+                <h3>Manage Tracked Unlocks</h3>
+                <button onClick={() => setOpenManage(false)}>Close</button>
+              </div>
+              <div className="manage-list">
+                {sorted.map(u => {
+                  const unlocked = !!u.unlocked
+                  return (
+                    <div key={u.machineType} className="manage-row">
+                      <div className="manage-left">
+                        <input
+                          type="checkbox"
+                          checked={tracked.includes(u.machineType)}
+                          onChange={() => toggleTrack(u.machineType)}
+                        />
+                        <span className="manage-name">{machineNames[u.machineType] || u.machineType}</span>
+                      </div>
+                      <div className="manage-status">{unlocked ? 'Unlocked' : 'Locked'}</div>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
-            <div className="manage-list">
-              {sorted.map(u => (
-                <label key={u.machineType} className="manage-row">
-                  <input
-                    type="checkbox"
-                    checked={tracked.includes(u.machineType)}
-                    onChange={() => toggleTrack(u.machineType)}
-                  />
-                  <span className="manage-name">{machineNames[u.machineType] || u.machineType}</span>
-                </label>
-              ))}
-            </div>
-          </div>
         </div>
       )}
     </div>
