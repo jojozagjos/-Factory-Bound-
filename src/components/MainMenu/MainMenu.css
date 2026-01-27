@@ -165,6 +165,13 @@
   animation: slideInSmooth 0.3s ease-out;
 }
 
+/* Prevent sub-menus from being taller than the viewport and allow scrolling */
+.sub-menu {
+  max-height: calc(100vh - 120px);
+  overflow: auto;
+  padding: 1rem;
+}
+
 @keyframes slideInSmooth {
   from {
     opacity: 0;

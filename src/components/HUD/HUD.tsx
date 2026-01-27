@@ -29,9 +29,10 @@ const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree
   const [showPlayerList, setShowPlayerList] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [showGrid, setShowGrid] = useState(true)
-  const [textScale, setTextScale] = useState(1)
+  // textScale removed — controlled via CSS/UX decisions; persisted settings handled elsewhere
   const [colorblindMode, setColorblindMode] = useState(false)
   const [highContrast, setHighContrast] = useState(false)
+  const [reduceMotion, setReduceMotion] = useState(false)
   const [audioLevels, setAudioLevels] = useState({ master: 80, music: 60, sfx: 80 })
   
   const isMultiplayer = session?.settings?.maxPlayers && session.settings.maxPlayers > 1
@@ -46,10 +47,7 @@ const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
   }, [])
 
-  useEffect(() => {
-    document.documentElement.style.setProperty('--hud-text-scale', textScale.toString())
-  }, [textScale])
-  
+ 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen()
@@ -59,9 +57,13 @@ const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree
   }
   
   const toggleGridSetting = () => {
-    setShowGrid(prev => !prev)
-    // Dispatch custom event for GameCanvas to listen
-    window.dispatchEvent(new CustomEvent('toggleGrid', { detail: !showGrid }))
+    setShowGrid(prev => {
+      const next = !prev
+      try { localStorage.setItem('showGrid', JSON.stringify(next)) } catch {}
+      // Dispatch custom event for GameCanvas to listen
+      window.dispatchEvent(new CustomEvent('toggleGrid', { detail: next }))
+      return next
+    })
   }
   
   // Handle keyboard shortcuts
@@ -99,6 +101,96 @@ const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [isMultiplayer, showPauseMenu, isPaused, togglePause])
 
+  // Load settings from localStorage and listen for menu-originated updates
+  useEffect(() => {
+    try {
+      const cb = localStorage.getItem('colorblindMode')
+      if (cb != null) setColorblindMode(JSON.parse(cb))
+    } catch {}
+
+    try {
+      const hc = localStorage.getItem('highContrast')
+      if (hc != null) setHighContrast(JSON.parse(hc))
+    } catch {}
+
+    try {
+      const audio = localStorage.getItem('audioLevels')
+      if (audio) setAudioLevels(JSON.parse(audio))
+    } catch {}
+
+    try {
+      const res = localStorage.getItem('resolution')
+      if (res) {
+        document.documentElement.style.setProperty('--game-resolution', res)
+      }
+    } catch {}
+
+    try {
+      const sg = localStorage.getItem('showGrid')
+      if (sg != null) setShowGrid(JSON.parse(sg))
+    } catch {}
+
+    try {
+      const rm = localStorage.getItem('reduceMotion')
+      if (rm != null) setReduceMotion(JSON.parse(rm))
+    } catch {}
+
+    const handleSettingsUpdate = (e: Event) => {
+      const custom = e as CustomEvent<Partial<Record<string, any>>>
+      const data = custom.detail || {}
+      if (data.colorblindMode != null) {
+        setColorblindMode(!!data.colorblindMode)
+        try { localStorage.setItem('colorblindMode', JSON.stringify(!!data.colorblindMode)) } catch {}
+      }
+      if (data.highContrast != null) {
+        setHighContrast(!!data.highContrast)
+        try { localStorage.setItem('highContrast', JSON.stringify(!!data.highContrast)) } catch {}
+      }
+      if (data.audioLevels) {
+        setAudioLevels(data.audioLevels)
+        try { localStorage.setItem('audioLevels', JSON.stringify(data.audioLevels)) } catch {}
+        audioSystem.updateSettings({
+          masterVolume: data.audioLevels.master / 100,
+          musicVolume: data.audioLevels.music / 100,
+          sfxVolume: data.audioLevels.sfx / 100,
+        })
+      }
+      if (data.showGrid != null) {
+        setShowGrid(!!data.showGrid)
+        try { localStorage.setItem('showGrid', JSON.stringify(!!data.showGrid)) } catch {}
+      }
+      if (data.reduceMotion != null) {
+        setReduceMotion(!!data.reduceMotion)
+        try { localStorage.setItem('reduceMotion', JSON.stringify(!!data.reduceMotion)) } catch {}
+      }
+      if (data.fullscreen != null) {
+        if (data.fullscreen && !document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch(() => {})
+          setIsFullscreen(true)
+        } else if (!data.fullscreen && document.fullscreenElement) {
+          document.exitFullscreen().catch(() => {})
+          setIsFullscreen(false)
+        }
+      }
+      if (data.resolution) {
+        try { localStorage.setItem('resolution', String(data.resolution)) } catch {}
+        document.documentElement.style.setProperty('--game-resolution', String(data.resolution))
+      }
+    }
+
+    window.addEventListener('updateSettings', handleSettingsUpdate)
+    const handleToggleGrid = (ev: Event) => {
+      const c = ev as CustomEvent<boolean>
+      try { setShowGrid(!!c.detail) } catch {}
+    }
+    window.addEventListener('toggleGrid', handleToggleGrid as EventListener)
+
+    return () => {
+      window.removeEventListener('updateSettings', handleSettingsUpdate)
+      window.removeEventListener('toggleGrid', handleToggleGrid as EventListener)
+    }
+  }, [])
+
   const handleAudioChange = (type: 'master' | 'music' | 'sfx', value: number) => {
     setAudioLevels(prev => {
       const next = { ...prev, [type]: value }
@@ -107,10 +199,12 @@ const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree
         musicVolume: next.music / 100,
         sfxVolume: next.sfx / 100,
       })
+      try { localStorage.setItem('audioLevels', JSON.stringify(next)) } catch {}
+      window.dispatchEvent(new CustomEvent('updateSettings', { detail: { audioLevels: next } }))
       return next
     })
   }
-  
+
   // Format game time
   const formatTime = (ms: number) => {
     const totalSeconds = Math.floor(ms / 1000)
@@ -135,7 +229,7 @@ const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree
       setShowSettings(false)
     }
   }
-  
+
   const handleReturnToMenu = () => {
     setShowPauseMenu(false)
     setShowSettings(false)
@@ -453,24 +547,18 @@ const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree
                       onChange={toggleGridSetting}
                     />
                   </label>
+                  {/* Text Scale removed — controlled via CSS/UX decisions */}
                   <label>
-                    <span>Text Scale</span>
-                    <input
-                      type="range"
-                      min="0.85"
-                      max="1.25"
-                      step="0.05"
-                      value={textScale}
-                      onChange={(e) => setTextScale(parseFloat(e.target.value))}
-                    />
-                    <span className="settings-value">{Math.round(textScale * 100)}%</span>
-                  </label>
-                  <label>
-                    <span>Colorblind Boost</span>
+                    <span>Colorblind Mode</span>
                     <input
                       type="checkbox"
                       checked={colorblindMode}
-                      onChange={(e) => setColorblindMode(e.target.checked)}
+                      onChange={(e) => {
+                        const val = e.currentTarget.checked
+                        setColorblindMode(val)
+                        try { localStorage.setItem('colorblindMode', JSON.stringify(val)) } catch {}
+                        window.dispatchEvent(new CustomEvent('updateSettings', { detail: { colorblindMode: val } }))
+                      }}
                     />
                   </label>
                   <label>
@@ -479,6 +567,19 @@ const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree
                       type="checkbox"
                       checked={highContrast}
                       onChange={(e) => setHighContrast(e.target.checked)}
+                    />
+                  </label>
+                  <label>
+                    <span>Reduce Motion</span>
+                    <input
+                      type="checkbox"
+                      checked={reduceMotion}
+                      onChange={(e) => {
+                        const val = e.currentTarget.checked
+                        setReduceMotion(val)
+                        try { localStorage.setItem('reduceMotion', JSON.stringify(val)) } catch {}
+                        window.dispatchEvent(new CustomEvent('updateSettings', { detail: { reduceMotion: val } }))
+                      }}
                     />
                   </label>
                 </div>

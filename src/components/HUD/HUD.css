@@ -236,7 +236,8 @@
   border: 2px solid var(--accent);
   border-radius: 12px;
   overflow: hidden;
-  animation: slideIn 0.3s ease-out;
+  /* Disable open animation for instant panel appearance */
+  animation: none;
   display: flex;
   flex-direction: column;
 }

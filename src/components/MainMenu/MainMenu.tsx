@@ -37,6 +37,20 @@ const MainMenu = ({ onStartGame, onStartTutorial, onStartMultiplayer, onLogout }
 
   const isGuest = !currentPlayer || currentPlayer.username === 'Guest'
 
+  // Local synced settings state (persisted to localStorage and dispatched)
+  const initialAudio = (() => { try { const v = localStorage.getItem('audioLevels'); return v ? JSON.parse(v) : { master: 80, music: 60, sfx: 80 } } catch { return { master: 80, music: 60, sfx: 80 } } })()
+  const [audioLevels, setAudioLevels] = useState<{ master: number; music: number; sfx: number }>(initialAudio)
+  const initialFullscreen = (() => { try { const v = localStorage.getItem('fullscreen'); return v ? JSON.parse(v) : false } catch { return false } })()
+  const [fullscreen, setFullscreen] = useState<boolean>(initialFullscreen)
+  const initialResolution = (() => { try { const v = localStorage.getItem('resolution'); return v ?? '1920x1080' } catch { return '1920x1080' } })()
+  const [resolution, setResolution] = useState<string>(initialResolution)
+  const initialCB = (() => { try { const v = localStorage.getItem('colorblindMode'); return v ? JSON.parse(v) : false } catch { return false } })()
+  const [colorblind, setColorblind] = useState<boolean>(initialCB)
+  const initialHC = (() => { try { const v = localStorage.getItem('highContrast'); return v ? JSON.parse(v) : false } catch { return false } })()
+  const [highContrast, setHighContrast] = useState<boolean>(initialHC)
+  const initialRM = (() => { try { const v = localStorage.getItem('reduceMotion'); return v ? JSON.parse(v) : false } catch { return false } })()
+  const [reduceMotion, setReduceMotion] = useState<boolean>(initialRM)
+
   const handleMultiplayerStart = (session: GameSession) => {
     if (onStartMultiplayer) {
       onStartMultiplayer(session)
@@ -255,8 +269,40 @@ const MainMenu = ({ onStartGame, onStartTutorial, onStartMultiplayer, onLogout }
             <div className="settings-section">
               <h3>Graphics</h3>
               <label>
+                <input
+                  type="checkbox"
+                  defaultChecked={(() => { try { const v = localStorage.getItem('showGrid'); return v == null ? true : JSON.parse(v) } catch { return true } })()}
+                  onChange={(e) => {
+                    const val = e.currentTarget.checked
+                    try { localStorage.setItem('showGrid', JSON.stringify(val)) } catch {}
+                    window.dispatchEvent(new CustomEvent('toggleGrid', { detail: val }))
+                  }}
+                />
+                <span>Show Grid</span>
+              </label>
+
+              <label>
+                <input
+                  type="checkbox"
+                  checked={fullscreen}
+                  onChange={(e) => {
+                    const val = e.currentTarget.checked
+                    setFullscreen(val)
+                    try { localStorage.setItem('fullscreen', JSON.stringify(val)) } catch {}
+                    window.dispatchEvent(new CustomEvent('updateSettings', { detail: { fullscreen: val } }))
+                  }}
+                />
+                <span>Fullscreen</span>
+              </label>
+
+              <label>
                 <span>Resolution</span>
-                <select>
+                <select value={resolution} onChange={(e) => {
+                  const val = e.currentTarget.value
+                  setResolution(val)
+                  try { localStorage.setItem('resolution', val) } catch {}
+                  window.dispatchEvent(new CustomEvent('updateSettings', { detail: { resolution: val } }))
+                }}>
                   <option>1920x1080</option>
                   <option>2560x1440</option>
                   <option>3840x2160</option>
@@ -276,31 +322,72 @@ const MainMenu = ({ onStartGame, onStartTutorial, onStartMultiplayer, onLogout }
               <h3>Audio</h3>
               <label>
                 <span>Master Volume</span>
-                <input type="range" min="0" max="100" defaultValue="80" />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <input type="range" min="0" max="100" value={String(audioLevels.master)} onChange={(e) => {
+                    const next = { ...audioLevels, master: Number(e.currentTarget.value) }
+                    setAudioLevels(next)
+                    try { localStorage.setItem('audioLevels', JSON.stringify(next)) } catch {}
+                    window.dispatchEvent(new CustomEvent('updateSettings', { detail: { audioLevels: next } }))
+                  }} />
+                  <span>{audioLevels.master}%</span>
+                </div>
               </label>
               <label>
                 <span>Music Volume</span>
-                <input type="range" min="0" max="100" defaultValue="60" />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <input type="range" min="0" max="100" value={String(audioLevels.music)} onChange={(e) => {
+                    const next = { ...audioLevels, music: Number(e.currentTarget.value) }
+                    setAudioLevels(next)
+                    try { localStorage.setItem('audioLevels', JSON.stringify(next)) } catch {}
+                    window.dispatchEvent(new CustomEvent('updateSettings', { detail: { audioLevels: next } }))
+                  }} />
+                  <span>{audioLevels.music}%</span>
+                </div>
               </label>
               <label>
                 <span>SFX Volume</span>
-                <input type="range" min="0" max="100" defaultValue="80" />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <input type="range" min="0" max="100" value={String(audioLevels.sfx)} onChange={(e) => {
+                    const next = { ...audioLevels, sfx: Number(e.currentTarget.value) }
+                    setAudioLevels(next)
+                    try { localStorage.setItem('audioLevels', JSON.stringify(next)) } catch {}
+                    window.dispatchEvent(new CustomEvent('updateSettings', { detail: { audioLevels: next } }))
+                  }} />
+                  <span>{audioLevels.sfx}%</span>
+                </div>
               </label>
             </div>
             <div className="settings-section">
               <h3>Accessibility</h3>
-              <label>
-                <input type="checkbox" />
-                <span>Colorblind Mode</span>
-              </label>
-              <label>
-                <input type="checkbox" />
-                <span>Screen Reader Support</span>
-              </label>
-              <label>
-                <input type="checkbox" defaultChecked />
-                <span>Reduce Motion</span>
-              </label>
+              <div>
+                <label>
+                  <input type="checkbox" defaultChecked={colorblind} onChange={(e) => {
+                    const val = e.currentTarget.checked
+                    setColorblind(val)
+                    try { localStorage.setItem('colorblindMode', JSON.stringify(val)) } catch {}
+                    window.dispatchEvent(new CustomEvent('updateSettings', { detail: { colorblindMode: val } }))
+                  }} />
+                  <span>Colorblind Mode</span>
+                </label>
+                <label>
+                  <input type="checkbox" defaultChecked={highContrast} onChange={(e) => {
+                    const val = e.currentTarget.checked
+                    setHighContrast(val)
+                    try { localStorage.setItem('highContrast', JSON.stringify(val)) } catch {}
+                    window.dispatchEvent(new CustomEvent('updateSettings', { detail: { highContrast: val } }))
+                  }} />
+                  <span>High Contrast</span>
+                </label>
+                <label>
+                  <input type="checkbox" checked={reduceMotion} onChange={(e) => {
+                    const val = e.currentTarget.checked
+                    setReduceMotion(val)
+                    try { localStorage.setItem('reduceMotion', JSON.stringify(val)) } catch {}
+                    window.dispatchEvent(new CustomEvent('updateSettings', { detail: { reduceMotion: val } }))
+                  }} />
+                  <span>Reduce Motion</span>
+                </label>
+              </div>
             </div>
             <button 
               className="menu-button back" 
