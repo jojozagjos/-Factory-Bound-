@@ -217,16 +217,6 @@ const CameraControls = ({ camera, onCameraChange, canvasRef, worldBounds }: Came
       }
     }
 
-    // Double-click on canvas to fit-to-world
-    const handleDoubleClick = () => {
-      const fit = computeFitZoom()
-      if (fit !== null) {
-        const gridSizeF = 50
-        const cx = (worldBoundsRef.current!.width * gridSizeF) / 2
-        const cy = (worldBoundsRef.current!.height * gridSizeF) / 2
-        onCameraChangeRef.current({ x: cx, y: cy, zoom: Math.max(0.05, fit) })
-      }
-    }
 
     canvas.addEventListener('mousedown', handleMouseDown)
     canvas.addEventListener('mousemove', handleMouseMove)
@@ -234,7 +224,6 @@ const CameraControls = ({ camera, onCameraChange, canvasRef, worldBounds }: Came
     canvas.addEventListener('mouseleave', handleMouseUp)
     canvas.addEventListener('wheel', handleWheel, { passive: false })
     canvas.addEventListener('contextmenu', handleContextMenu)
-    canvas.addEventListener('dblclick', handleDoubleClick)
     document.addEventListener('keydown', handleKeyDown)
 
     return () => {
@@ -244,7 +233,6 @@ const CameraControls = ({ camera, onCameraChange, canvasRef, worldBounds }: Came
       canvas.removeEventListener('mouseleave', handleMouseUp)
       canvas.removeEventListener('wheel', handleWheel)
       canvas.removeEventListener('contextmenu', handleContextMenu)
-      canvas.removeEventListener('dblclick', handleDoubleClick)
       document.removeEventListener('keydown', handleKeyDown)
     }
   }, [canvasRef])
