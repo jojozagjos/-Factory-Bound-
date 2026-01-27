@@ -43,6 +43,18 @@ const UnlockProgress = () => {
 
   const [openManage, setOpenManage] = useState(false)
 
+  const formatResourceName = (id: string) => {
+    // Map known resource ids to friendly names
+    const scienceMatch = id.match(/^science_pack_(\d+)$/)
+    if (scienceMatch) {
+      const n = parseInt(scienceMatch[1], 10)
+      const roman = ['I','II','III','IV','V'][Math.max(0, n - 1)] || String(n)
+      return `Science Pack ${roman}`
+    }
+    // Fallback: convert snake_case to Title Case
+    return id.split('_').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ')
+  }
+
   return (
     <div className="unlock-progress">
       <div className="unlock-header">
@@ -66,12 +78,13 @@ const UnlockProgress = () => {
                   const delivered = delivery?.quantityDelivered || 0
                   const percentage = Math.min(100, (delivered / required.quantity) * 100)
                   const isMet = delivered >= required.quantity
+                  const friendly = formatResourceName(required.name)
 
                   return (
                     <div key={required.name} className="requirement-item">
                       <div className="requirement-text">
-                        <span className={isMet ? 'met' : ''}>{required.name}</span>
-                        <span className={isMet ? 'met' : ''}>{delivered}/{required.quantity}</span>
+                        <span className={isMet ? 'met' : ''}>{friendly} — </span>
+                        <span className={isMet ? 'met' : ''}>{delivered} / {required.quantity}</span>
                       </div>
                       <div className="requirement-bar">
                         <div 

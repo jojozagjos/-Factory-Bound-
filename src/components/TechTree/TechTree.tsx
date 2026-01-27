@@ -23,6 +23,16 @@ const TechTree = ({ onClose }: TechTreeProps) => {
     research: '🔬',
   }
 
+  const formatResourceName = (id: string) => {
+    const scienceMatch = id.match(/^science_pack_(\d+)$/)
+    if (scienceMatch) {
+      const n = parseInt(scienceMatch[1], 10)
+      const roman = ['I','II','III','IV','V'][Math.max(0, n - 1)] || String(n)
+      return `Science Pack ${roman}`
+    }
+    return id.split('_').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(' ')
+  }
+
   const handleResearch = (techId: string) => {
     unlockTech(techId)
   }
@@ -64,21 +74,24 @@ const TechTree = ({ onClose }: TechTreeProps) => {
                       }`}
                       onClick={() => !tech.researched && handleResearch(tech.id)}
                     >
-                      <div className="tech-node-name">{tech.name}</div>
-                      <div className="tech-node-description">{tech.description}</div>
-                      <div className="tech-node-cost">
-                        {tech.cost.map((item, idx) => (
-                          <span key={idx} className="cost-badge">
-                            {item.name}: {item.quantity}
-                          </span>
-                        ))}
-                      </div>
+                            <div className="tech-node-name">{tech.name}</div>
+                            <div className="tech-node-description">{tech.description}</div>
+                            <div className="tech-node-cost">
+                              {tech.cost.map((item, idx) => (
+                                <span key={idx} className="cost-badge">
+                                  {formatResourceName(item.name)} — {item.quantity}
+                                </span>
+                              ))}
+                            </div>
                       {tech.researched && (
                         <div className="researched-badge">✓ Researched</div>
                       )}
                       {tech.dependencies.length > 0 && !tech.researched && (
                         <div className="dependencies-badge">
-                          Requires: {tech.dependencies.join(', ')}
+                          Requires: {tech.dependencies.map(d => {
+                            const t = techTree.find(t => t.id === d)
+                            return t ? t.name : d
+                          }).join(', ')}
                         </div>
                       )}
                     </div>
