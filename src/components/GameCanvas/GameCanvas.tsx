@@ -29,7 +29,6 @@ const GameCanvas = () => {
       zoom: 1
     }
   })
-  const cameraRef = useRef<CameraState>(camera)
   const [showGrid, setShowGrid] = useState(true)
   const animationTimeRef = useRef(0) // For belt animation
   const particlesRef = useRef<Array<{
@@ -43,13 +42,7 @@ const GameCanvas = () => {
     size: number
   }>>([]) // For particle effects
   const fullMapCacheRef = useRef<HTMLCanvasElement | null>(null)
-  const machineCacheRef = useRef<HTMLCanvasElement | null>(null)
-  const lod2MapCacheRef = useRef<HTMLCanvasElement | null>(null)
-  const lod4MapCacheRef = useRef<HTMLCanvasElement | null>(null)
-  const lod2MachineCacheRef = useRef<HTMLCanvasElement | null>(null)
-  const lod4MachineCacheRef = useRef<HTMLCanvasElement | null>(null)
-  const lastFrameRef = useRef<number>(0)
-  const lodBlendAlpha = useRef<number>(1)
+  const resourceCacheRef = useRef<HTMLCanvasElement | null>(null)
 
   // Update camera position when worldMap loads
   useEffect(() => {
@@ -63,15 +56,11 @@ const GameCanvas = () => {
     }
   }, [worldMap])
 
-  // keep ref in sync when camera state changes
-  useEffect(() => { cameraRef.current = camera }, [camera])
-
   // Build an offscreen low-resolution cache (1px per tile) for fast zoomed-out rendering
   useEffect(() => {
     if (!worldMap) {
       fullMapCacheRef.current = null
-      lod2MapCacheRef.current = null
-      lod4MapCacheRef.current = null
+      resourceCacheRef.current = null
       return
     }
 
@@ -102,196 +91,33 @@ const GameCanvas = () => {
     }
 
     fullMapCacheRef.current = off
-  }, [worldMap])
 
-  // Build intermediate LOD cache at 2px per tile
-  useEffect(() => {
-    if (!worldMap) {
-      lod2MapCacheRef.current = null
-      return
-    }
-
-    const off = document.createElement('canvas')
-    off.width = worldMap.width * 2
-    off.height = worldMap.height * 2
-    const ctx = off.getContext('2d')
-    if (!ctx) return
-
-    ctx.imageSmoothingEnabled = false
-
-    for (let y = 0; y < worldMap.height; y++) {
-      for (let x = 0; x < worldMap.width; x++) {
-        const tile = worldMap.tiles.get(`${x},${y}`)
-        let color = '#0a0a0a'
-        if (tile) {
-          switch (tile.type) {
-            case 'water': color = '#2563eb'; break
-            case 'grass': color = '#16a34a'; break
-            case 'stone': color = '#71717a'; break
-            case 'sand': color = '#eab308'; break
-            default: color = '#0a0a0a'
+    // Build resource overlay cache
+    const res = document.createElement('canvas')
+    res.width = worldMap.width
+    res.height = worldMap.height
+    const rctx = res.getContext('2d')
+    if (rctx) {
+      rctx.imageSmoothingEnabled = false
+      for (let y = 0; y < worldMap.height; y++) {
+        for (let x = 0; x < worldMap.width; x++) {
+          const tile = worldMap.tiles.get(`${x},${y}`)
+          if (tile && tile.resource) {
+            let resourceColor = '#a1a1aa'
+            switch (tile.resource.type) {
+              case 'iron_ore': resourceColor = '#94a3b8'; break
+              case 'copper_ore': resourceColor = '#f97316'; break
+              case 'coal': resourceColor = '#27272a'; break
+              case 'stone': resourceColor = '#78716c'; break
+            }
+            rctx.fillStyle = resourceColor
+            rctx.fillRect(x, y, 1, 1)
           }
         }
-        ctx.fillStyle = color
-        ctx.fillRect(x * 2, y * 2, 2, 2)
       }
+      resourceCacheRef.current = res
     }
-
-    lod2MapCacheRef.current = off
   }, [worldMap])
-
-  // Build intermediate LOD cache at 4px per tile
-  useEffect(() => {
-    if (!worldMap) {
-      lod4MapCacheRef.current = null
-      return
-    }
-
-    const off = document.createElement('canvas')
-    off.width = worldMap.width * 4
-    off.height = worldMap.height * 4
-    const ctx = off.getContext('2d')
-    if (!ctx) return
-
-    ctx.imageSmoothingEnabled = false
-
-    for (let y = 0; y < worldMap.height; y++) {
-      for (let x = 0; x < worldMap.width; x++) {
-        const tile = worldMap.tiles.get(`${x},${y}`)
-        let color = '#0a0a0a'
-        if (tile) {
-          switch (tile.type) {
-            case 'water': color = '#2563eb'; break
-            case 'grass': color = '#16a34a'; break
-            case 'stone': color = '#71717a'; break
-            case 'sand': color = '#eab308'; break
-            default: color = '#0a0a0a'
-          }
-        }
-        ctx.fillStyle = color
-        ctx.fillRect(x * 4, y * 4, 4, 4)
-      }
-    }
-
-    lod4MapCacheRef.current = off
-  }, [worldMap])
-
-  // Pre-render a low-res machine layer (1px per tile) for fast LOD drawing
-  useEffect(() => {
-    if (!worldMap) {
-      machineCacheRef.current = null
-      lod2MachineCacheRef.current = null
-      lod4MachineCacheRef.current = null
-      return
-    }
-
-    const off = document.createElement('canvas')
-    off.width = worldMap.width
-    off.height = worldMap.height
-    const ctx = off.getContext('2d')
-    if (!ctx) return
-
-    ctx.clearRect(0, 0, off.width, off.height)
-    ctx.imageSmoothingEnabled = false
-
-    // Draw each machine as a 1px marker (color based on type)
-    machines.forEach(m => {
-      const x = m.position.x
-      const y = m.position.y
-      // Don't pre-render base marker if base hasn't been placed yet
-      if (m.type === 'base' && (!m.baseEntrances || m.baseEntrances.length === 0)) return
-      let col = '#ffffff'
-      switch (m.type) {
-        case 'base': col = '#ffd966'; break
-        case 'miner': col = '#94a3b8'; break
-        case 'smelter': col = '#f97316'; break
-        case 'assembler': col = '#c084fc'; break
-        case 'belt': col = '#cbd5e1'; break
-        case 'turret': col = '#ef4444'; break
-        default: col = '#d1d5db'
-      }
-      ctx.fillStyle = col
-      ctx.fillRect(x, y, 1, 1)
-    })
-
-    machineCacheRef.current = off
-  }, [machines, worldMap])
-
-  // Pre-render machine layer for 2px per tile
-  useEffect(() => {
-    if (!worldMap) {
-      lod2MachineCacheRef.current = null
-      return
-    }
-
-    const off = document.createElement('canvas')
-    off.width = worldMap.width * 2
-    off.height = worldMap.height * 2
-    const ctx = off.getContext('2d')
-    if (!ctx) return
-
-    ctx.clearRect(0, 0, off.width, off.height)
-    ctx.imageSmoothingEnabled = false
-
-    machines.forEach(m => {
-      // Don't pre-render base marker if base hasn't been placed yet
-      if (m.type === 'base' && (!m.baseEntrances || m.baseEntrances.length === 0)) return
-      const x = m.position.x * 2
-      const y = m.position.y * 2
-      let col = '#ffffff'
-      switch (m.type) {
-        case 'base': col = '#ffd966'; break
-        case 'miner': col = '#94a3b8'; break
-        case 'smelter': col = '#f97316'; break
-        case 'assembler': col = '#c084fc'; break
-        case 'belt': col = '#cbd5e1'; break
-        case 'turret': col = '#ef4444'; break
-        default: col = '#d1d5db'
-      }
-      ctx.fillStyle = col
-      ctx.fillRect(x, y, 2, 2)
-    })
-
-    lod2MachineCacheRef.current = off
-  }, [machines, worldMap])
-
-  // Pre-render machine layer for 4px per tile
-  useEffect(() => {
-    if (!worldMap) {
-      lod4MachineCacheRef.current = null
-      return
-    }
-
-    const off = document.createElement('canvas')
-    off.width = worldMap.width * 4
-    off.height = worldMap.height * 4
-    const ctx = off.getContext('2d')
-    if (!ctx) return
-
-    ctx.clearRect(0, 0, off.width, off.height)
-    ctx.imageSmoothingEnabled = false
-
-    machines.forEach(m => {
-      // Don't pre-render base marker if base hasn't been placed yet
-      if (m.type === 'base' && (!m.baseEntrances || m.baseEntrances.length === 0)) return
-      const x = m.position.x * 4
-      const y = m.position.y * 4
-      let col = '#ffffff'
-      switch (m.type) {
-        case 'base': col = '#ffd966'; break
-        case 'miner': col = '#94a3b8'; break
-        case 'smelter': col = '#f97316'; break
-        case 'assembler': col = '#c084fc'; break
-        case 'belt': col = '#cbd5e1'; break
-        case 'turret': col = '#ef4444'; break
-        default: col = '#d1d5db'
-      }
-      ctx.fillStyle = col
-      ctx.fillRect(x, y, 4, 4)
-    })
-
-    lod4MachineCacheRef.current = off
-  }, [machines, worldMap])
 
   // Listen for grid toggle
   useEffect(() => {
@@ -317,31 +143,13 @@ const GameCanvas = () => {
 
     let animationFrameId: number
 
-      const LOD1_ZOOM = 0.6
-      const LOD2_ZOOM = 0.85
-      const LOD3_ZOOM = 1.0
-
-      // Simple render loop
+    // Simple render loop
     const render = () => {
-      // Frame rate cap depending on zoom (60fps normally, 30fps when using LOD caches)
-      const now = performance.now()
-      const delta = now - (lastFrameRef.current || now)
-      const targetMs = cameraRef.current.zoom <= LOD3_ZOOM ? (1000 / 30) : (1000 / 60)
-      if (delta < targetMs) {
-        animationFrameId = requestAnimationFrame(render)
-        return
-      }
-      lastFrameRef.current = now
-
+      const LOD_ZOOM = 0.6
       // Update animation time for belt animations
-      animationTimeRef.current += delta / 1000
+      animationTimeRef.current += 0.016 // ~60fps
 
-      // Smooth LOD blending: fade in when entering LOD, fade out when leaving
-      const targetAlpha = cameraRef.current.zoom <= LOD3_ZOOM ? 1 : 0
-      const blendSpeed = 0.1
-      lodBlendAlpha.current += (targetAlpha - lodBlendAlpha.current) * blendSpeed
-
-      const skipEffects = cameraRef.current.zoom <= LOD3_ZOOM
+      const skipEffects = camera.zoom <= LOD_ZOOM
       // Update particles (skip heavy updates when zoomed out)
       if (!skipEffects) {
         particlesRef.current = particlesRef.current.filter(p => {
@@ -361,11 +169,10 @@ const GameCanvas = () => {
       ctx.restore()
 
       // Apply camera transform
-      const cam = cameraRef.current
       ctx.save()
       ctx.translate(canvas.width / 2, canvas.height / 2)
-      ctx.scale(cam.zoom, cam.zoom)
-      ctx.translate(-cam.x, -cam.y)
+      ctx.scale(camera.zoom, camera.zoom)
+      ctx.translate(-camera.x, -camera.y)
 
       const gridSize = 50
 
@@ -377,46 +184,26 @@ const GameCanvas = () => {
 
       // Draw world tiles (if map exists)
       if (worldMap) {
-        const cam = cameraRef.current
-        visibleLeft = Math.floor((cam.x - canvas.width / (2 * cam.zoom)) / gridSize) - 1
-        visibleRight = Math.ceil((cam.x + canvas.width / (2 * cam.zoom)) / gridSize) + 1
-        visibleTop = Math.floor((cam.y - canvas.height / (2 * cam.zoom)) / gridSize) - 1
-        visibleBottom = Math.ceil((cam.y + canvas.height / (2 * cam.zoom)) / gridSize) + 1
+        visibleLeft = Math.floor((camera.x - canvas.width / (2 * camera.zoom)) / gridSize) - 1
+        visibleRight = Math.ceil((camera.x + canvas.width / (2 * camera.zoom)) / gridSize) + 1
+        visibleTop = Math.floor((camera.y - canvas.height / (2 * camera.zoom)) / gridSize) - 1
+        visibleBottom = Math.ceil((camera.y + canvas.height / (2 * camera.zoom)) / gridSize) + 1
 
-        // Choose appropriate LOD cache based on zoom
-        const cache = (cam.zoom <= LOD1_ZOOM
-          ? fullMapCacheRef.current
-          : cam.zoom <= LOD2_ZOOM
-            ? lod2MapCacheRef.current
-            : cam.zoom <= LOD3_ZOOM
-              ? lod4MapCacheRef.current
-              : null)
-        const machineCache = (cam.zoom <= LOD1_ZOOM
-          ? machineCacheRef.current
-          : cam.zoom <= LOD2_ZOOM
-            ? lod2MachineCacheRef.current
-            : cam.zoom <= LOD3_ZOOM
-              ? lod4MachineCacheRef.current
-              : null)
-        if (cache && lodBlendAlpha.current > 0.01) {
+        const LOD_ZOOM = 0.6 // below this zoom, use low-res cached rendering
+        const cache = fullMapCacheRef.current
+        const resCache = resourceCacheRef.current
+        if (cache && camera.zoom <= LOD_ZOOM) {
           ctx.imageSmoothingEnabled = false
           const worldPxW = worldMap.width * gridSize
           const worldPxH = worldMap.height * gridSize
-          
-          // Apply smooth blending opacity
-          ctx.globalAlpha = lodBlendAlpha.current
           ctx.drawImage(cache, 0, 0, cache.width, cache.height, 0, 0, worldPxW, worldPxH)
-
-          // Fast path: draw simplified machine layer (1px markers stretched)
-          if (machineCache) {
-            ctx.globalAlpha = 0.95 * lodBlendAlpha.current
-            ctx.drawImage(machineCache, 0, 0, machineCache.width, machineCache.height, 0, 0, worldPxW, worldPxH)
+          if (resCache) {
+            ctx.save()
+            ctx.globalAlpha = 0.6
+            ctx.drawImage(resCache, 0, 0, resCache.width, resCache.height, 0, 0, worldPxW, worldPxH)
+            ctx.restore()
           }
-          ctx.globalAlpha = 1
-        }
-        
-        // Draw full-detail tiles when not using cache or blending out
-        if (!cache || lodBlendAlpha.current < 0.99) {
+        } else {
           // Draw only visible tiles
           for (let tileY = Math.max(0, visibleTop); tileY < Math.min(worldMap.height, visibleBottom); tileY++) {
             for (let tileX = Math.max(0, visibleLeft); tileX < Math.min(worldMap.width, visibleRight); tileX++) {
@@ -533,19 +320,13 @@ const GameCanvas = () => {
               }
             }
           }
-          
-          // Apply inverse blending when transitioning to LOD
-          if (cache && lodBlendAlpha.current < 0.99 && lodBlendAlpha.current > 0.01) {
-            ctx.globalAlpha = 1 - lodBlendAlpha.current
-            ctx.globalAlpha = 1
-          }
         }
       }
 
       // Draw grid overlay (optional, for Builderment-style look)
       if (showGrid) {
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)'
-        ctx.lineWidth = 1 / cam.zoom
+        ctx.lineWidth = 1 / camera.zoom
         for (let x = Math.max(0, visibleLeft); x <= Math.min(worldMap?.width || 0, visibleRight); x++) {
           ctx.beginPath()
           ctx.moveTo(x * gridSize, Math.max(0, visibleTop) * gridSize)
@@ -829,17 +610,10 @@ const GameCanvas = () => {
         ctx.restore()
       })
 
-      // Draw enemies (simplified at LOD)
+      // Draw enemies
       enemies.forEach(enemy => {
         const x = enemy.position.x * gridSize
         const y = enemy.position.y * gridSize
-
-        if (cam.zoom <= LOD3_ZOOM) {
-          // Simplified enemy marker when zoomed out
-          ctx.fillStyle = '#ef4444'
-          ctx.fillRect(x - 4, y - 4, 8, 8)
-          return
-        }
 
         ctx.save()
         ctx.translate(x, y)
@@ -860,16 +634,10 @@ const GameCanvas = () => {
         ctx.restore()
       })
 
-      // Draw projectiles (simplified at LOD)
+      // Draw projectiles
       projectiles.forEach(projectile => {
         const x = projectile.position.x * gridSize
         const y = projectile.position.y * gridSize
-
-        if (cam.zoom <= LOD3_ZOOM) {
-          ctx.fillStyle = '#fbbf24'
-          ctx.fillRect(x - 2, y - 2, 4, 4)
-          return
-        }
 
         ctx.fillStyle = '#fbbf24'
         ctx.beginPath()
@@ -912,7 +680,7 @@ const GameCanvas = () => {
         cancelAnimationFrame(animationFrameId)
       }
     }
-  }, [machines, enemies, projectiles, worldMap, selectedMachine, buildingMode, ghostPosition, showGrid])
+  }, [machines, enemies, projectiles, worldMap, selectedMachine, buildingMode, ghostPosition, camera, showGrid])
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current
