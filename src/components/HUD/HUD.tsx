@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useGameStore } from '../../store/gameStore'
+import { buildermentProgression } from '../../data/buildermentProgression'
 import { audioSystem } from '@/systems/AudioSystem/AudioSystem'
 import './HUD.css'
 
@@ -23,6 +24,7 @@ const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree
   const gameTime = useGameStore(state => state.gameTime)
   const gameModeManager = useGameStore(state => state.gameModeManager)
   const session = useGameStore(state => state.session)
+  const buildingMode = useGameStore(state => state.buildingMode)
   
   const [showPauseMenu, setShowPauseMenu] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
@@ -77,6 +79,8 @@ const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree
       
       // Toggle pause menu with Escape
       if (e.key === 'Escape') {
+        // If a build mode is active, ignore Escape here so build mode handler can cancel it
+        if (buildingMode) return
         e.preventDefault()
         if (showPauseMenu) {
           if (isPaused) {
@@ -219,6 +223,8 @@ const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree
     return item?.quantity || 0
   }
   
+  const visibleInventory = (currentPlayer?.inventory || []).filter(i => i.quantity > 0)
+
   const handlePauseToggle = () => {
     if (!isPaused) {
       togglePause()
@@ -257,9 +263,9 @@ const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree
             <span className="stat-label">Level</span>
             <span className="stat-value">{currentPlayer?.stats.level ?? 1}</span>
           </div>
-          <div className="stat">
-            <span className="stat-label">XP</span>
-            <span className="stat-value">{currentPlayer?.stats.experience ?? 0}</span>
+          <div className="stat cash">
+            <span className="stat-label">Cash</span>
+            <span className="stat-value cash-value">${session?.mode === 'coop' ? (useGameStore.getState().sharedCash || 0) : (currentPlayer?.cash ?? 0)}</span>
           </div>
           {gameModeManager && (
             <div className="stat">
@@ -379,6 +385,56 @@ const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree
                   <span>{selectedMachine.inventory.length} items</span>
                 </div>
               )}
+              <div style={{ marginTop: 8 }}>
+                {/* Upgrade button: if a higher-tier machine exists for this base type */}
+                {(() => {
+                  const base = selectedMachine.type.replace(/_\d+$/, '')
+                  const variants = buildermentProgression.machines
+                    .filter(m => m.id.startsWith(base))
+                    .sort((a, b) => (a.tier || 0) - (b.tier || 0))
+                  const currentTier = variants.findIndex(v => v.id === selectedMachine.type)
+                  const next = variants[currentTier + 1]
+                  if (next) {
+                    const store = useGameStore.getState()
+                    const costVar = store.buildingSystem.getBuildingCost(next.id)
+                    return (
+                      <button
+                        className="quick-btn"
+                        onClick={() => {
+                          const player = store.currentPlayer
+                          if (!player) return alert('No player')
+                          if (!costVar) return alert('No upgrade cost info')
+                          // Check resources and cash (co-op uses shared cash)
+                          const missing: string[] = []
+                          ;(costVar.costs || []).forEach((it: any) => {
+                            const have = player.inventory.find(i => i.name === (it.name || it.item))?.quantity || 0
+                            const need = Number(it.quantity || it.qty || 0) || 0
+                            if (have < need) missing.push(`${it.name || it.item} (${have}/${need})`)
+                          })
+                          const usingShared = store.session?.mode === 'coop'
+                          const cashAvailable = usingShared ? (store.sharedCash || 0) : (player.cash || 0)
+                          if (missing.length) return alert('Missing: ' + missing.join(', '))
+                          if ((costVar.price || 0) > cashAvailable) return alert('Not enough cash')
+
+                          // Perform atomic upgrade: remove old, attempt place new, rollback if fail
+                          const oldMachine = { ...selectedMachine }
+                          store.removeMachine(selectedMachine.id)
+                          const placed = store.placeMachine(next.id as any, selectedMachine.position, selectedMachine.rotation)
+                          if (!placed) {
+                            // rollback
+                            store.addMachine(oldMachine)
+                            return alert('Upgrade failed: placement blocked')
+                          }
+                          alert(`Upgraded to ${next.display_name || next.id}`)
+                        }}
+                      >
+                        Upgrade → {next.display_name || next.id}{costVar?.price ? ` ($${costVar.price})` : ''}
+                      </button>
+                    )
+                  }
+                  return null
+                })()}
+              </div>
             </div>
           </div>
         )}
@@ -401,43 +457,57 @@ const HUD = ({ onOpenNodeEditor, onReturnToMenu, onOpenBuildMenu, onOpenTechTree
             <div className="inventory-section">
               <h3>Resources</h3>
               <div className="resource-list">
-                <div className="resource-item">
-                  <span className="resource-icon">⚙</span>
-                  <span className="resource-name">Iron Plate</span>
-                  <span className="resource-amount">{getResourceCount('iron_plate')}</span>
-                </div>
-                <div className="resource-item">
-                  <span className="resource-icon">🔩</span>
-                  <span className="resource-name">Copper Plate</span>
-                  <span className="resource-amount">{getResourceCount('copper_plate')}</span>
-                </div>
-                <div className="resource-item">
-                  <span className="resource-icon">⚡</span>
-                  <span className="resource-name">Circuits</span>
-                  <span className="resource-amount">{getResourceCount('electronic_circuit')}</span>
-                </div>
-                <div className="resource-item">
-                  <span className="resource-icon">⚙</span>
-                  <span className="resource-name">Iron Gear</span>
-                  <span className="resource-amount">{getResourceCount('iron_gear')}</span>
-                </div>
-                <div className="resource-item">
-                  <span className="resource-icon">🪨</span>
-                  <span className="resource-name">Stone</span>
-                  <span className="resource-amount">{getResourceCount('stone')}</span>
-                </div>
+                {getResourceCount('iron_plate') > 0 && (
+                  <div className="resource-item">
+                    <span className="resource-icon">⚙</span>
+                    <span className="resource-name">Iron Plate</span>
+                    <span className="resource-amount">{getResourceCount('iron_plate')}</span>
+                  </div>
+                )}
+                {getResourceCount('copper_plate') > 0 && (
+                  <div className="resource-item">
+                    <span className="resource-icon">🔩</span>
+                    <span className="resource-name">Copper Plate</span>
+                    <span className="resource-amount">{getResourceCount('copper_plate')}</span>
+                  </div>
+                )}
+                {getResourceCount('electronic_circuit') > 0 && (
+                  <div className="resource-item">
+                    <span className="resource-icon">⚡</span>
+                    <span className="resource-name">Circuits</span>
+                    <span className="resource-amount">{getResourceCount('electronic_circuit')}</span>
+                  </div>
+                )}
+                {getResourceCount('iron_gear') > 0 && (
+                  <div className="resource-item">
+                    <span className="resource-icon">⚙</span>
+                    <span className="resource-name">Iron Gear</span>
+                    <span className="resource-amount">{getResourceCount('iron_gear')}</span>
+                  </div>
+                )}
+                {getResourceCount('stone') > 0 && (
+                  <div className="resource-item">
+                    <span className="resource-icon">🪨</span>
+                    <span className="resource-name">Stone</span>
+                    <span className="resource-amount">{getResourceCount('stone')}</span>
+                  </div>
+                )}
               </div>
             </div>
             <div className="inventory-section">
               <h3>All Items</h3>
               <div className="inventory-grid">
-                {currentPlayer?.inventory.map((item, index) => (
-                  <div key={index} className="inventory-item">
-                    <div className="item-icon">{item.icon || '📦'}</div>
-                    <div className="item-name">{item.name}</div>
-                    <div className="item-quantity">{item.quantity}</div>
-                  </div>
-                )) ?? <p className="empty-inventory">Inventory is empty</p>}
+                {visibleInventory.length > 0 ? (
+                  visibleInventory.map((item, index) => (
+                    <div key={index} className="inventory-item">
+                      <div className="item-icon">{item.icon || '📦'}</div>
+                      <div className="item-name">{item.name}</div>
+                      <div className="item-quantity">{item.quantity}</div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="empty-inventory">Inventory is empty</p>
+                )}
               </div>
             </div>
           </div>

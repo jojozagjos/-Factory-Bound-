@@ -9,7 +9,8 @@
   width: 100%;
   height: 100%;
   pointer-events: none;
-  z-index: 100;
+  /* Increase HUD stacking so inventory panel can appear above minimap/unlock widgets */
+  z-index: 1000;
   font-size: calc(16px * var(--hud-text-scale));
 }
 
@@ -68,6 +69,11 @@
   font-size: 1.5rem;
   font-weight: 700;
   color: var(--accent);
+}
+
+/* Builderment: display cash in gold */
+.stat.cash .stat-value.cash-value {
+  color: #ffd700; /* gold */
 }
 
 .stat-value.prestige {
@@ -226,18 +232,21 @@
 
 /* Inventory Panel */
 .inventory-panel {
+  /* Move inventory to top-right to avoid overlapping minimap/unlock widgets */
   position: absolute;
-  top: 50%;
+  top: 6rem;
   right: 1rem;
-  transform: translateY(-50%);
-  width: 450px;
-  max-height: 700px;
+  transform: none;
+  width: 420px;
+  /* Ensure the panel never exceeds viewport height (leave room for top/bottom HUD) */
+  max-height: calc(100vh - 8rem);
   background: var(--secondary-bg);
   border: 2px solid var(--accent);
   border-radius: 12px;
   overflow: hidden;
   /* Disable open animation for instant panel appearance */
   animation: none;
+  z-index: 1000; /* ensure inventory sits above other HUD elements */
   display: flex;
   flex-direction: column;
 }

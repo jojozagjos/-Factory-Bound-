@@ -1,10 +1,11 @@
 import type { Machine, MachineType, Position, WorldMap, Item, BuildingCost, BuildingGhost } from '../types/game'
+import { buildermentProgression } from '../data/buildermentProgression'
 
 /**
  * BuildingSystem handles machine placement, collision detection, and building management
  */
 export class BuildingSystem {
-  private buildingCosts: Map<MachineType, BuildingCost>
+  private buildingCosts: Map<string, BuildingCost>
 
   constructor() {
     this.buildingCosts = new Map()
@@ -15,85 +16,71 @@ export class BuildingSystem {
    * Initialize building costs for all machine types
    */
   private initializeBuildingCosts(): void {
-    const costs: BuildingCost[] = [
-      {
-        machineType: 'miner' as MachineType,
-        costs: [
-          { id: 'iron_plate', name: 'iron_plate', quantity: 10 },
-          { id: 'iron_gear', name: 'iron_gear', quantity: 5 },
-          { id: 'electronic_circuit', name: 'electronic_circuit', quantity: 3 },
-        ],
-      },
-      {
-        machineType: 'assembler' as MachineType,
-        costs: [
-          { id: 'iron_plate', name: 'iron_plate', quantity: 9 },
-          { id: 'iron_gear', name: 'iron_gear', quantity: 5 },
-          { id: 'electronic_circuit', name: 'electronic_circuit', quantity: 3 },
-        ],
-      },
-      {
-        machineType: 'smelter' as MachineType,
-        costs: [
-          { id: 'stone', name: 'stone', quantity: 5 },
-          { id: 'iron_plate', name: 'iron_plate', quantity: 5 },
-        ],
-      },
-      {
-        machineType: 'belt' as MachineType,
-        costs: [
-          { id: 'iron_plate', name: 'iron_plate', quantity: 1 },
-          { id: 'iron_gear', name: 'iron_gear', quantity: 1 },
-        ],
-      },
-      {
-        machineType: 'inserter' as MachineType,
-        costs: [
-          { id: 'iron_plate', name: 'iron_plate', quantity: 1 },
-          { id: 'iron_gear', name: 'iron_gear', quantity: 1 },
-          { id: 'electronic_circuit', name: 'electronic_circuit', quantity: 1 },
-        ],
-      },
-      {
-        machineType: 'power_plant' as MachineType,
-        costs: [
-          { id: 'stone', name: 'stone', quantity: 5 },
-          { id: 'iron_gear', name: 'iron_gear', quantity: 8 },
-          { id: 'iron_plate', name: 'iron_plate', quantity: 8 },
-        ],
-        requiredTech: 'steam_power',
-      },
-      {
-        machineType: 'turret' as MachineType,
-        costs: [
-          { id: 'iron_gear', name: 'iron_gear', quantity: 10 },
-          { id: 'iron_plate', name: 'iron_plate', quantity: 10 },
-          { id: 'copper_plate', name: 'copper_plate', quantity: 10 },
-        ],
-        requiredTech: 'military',
-      },
-      {
-        machineType: 'storage' as MachineType,
-        costs: [
-          { id: 'iron_plate', name: 'iron_plate', quantity: 20 },
-        ],
-      },
-      {
-        machineType: 'base' as MachineType,
-        costs: [], // Base is placed automatically at game start
-      },
+    // Builderment-style: All buildings are FREE to place.
+    // Populate the building cost table from the canonical progression data so every
+    // machine id (including custom ones like gold_vault) has an entry (empty costs).
+    const costs: BuildingCost[] = []
+
+    try {
+      // Helper to map tier to a default cash price
+      const tierPrice = (tier: number | undefined) => {
+        switch (tier) {
+          case 1: return 100
+          case 2: return 500
+          case 3: return 2500
+          case 4: return 10000
+          case 5: return 40000
+          default: return 200
+        }
+      }
+
+      buildermentProgression.machines.forEach(m => {
+        costs.push({ machineType: m.id as MachineType, costs: [], price: tierPrice((m as any).tier) })
+      })
+    } catch (e) {
+      // Fallback: if progression data missing, keep a minimal hardcoded list
+      ;( [
+        { machineType: 'miner' as MachineType, costs: [] },
+        { machineType: 'assembler' as MachineType, costs: [] },
+        { machineType: 'smelter' as MachineType, costs: [] },
+        { machineType: 'belt' as MachineType, costs: [] },
+        { machineType: 'inserter' as MachineType, costs: [] },
+      ] as BuildingCost[]).forEach(c => costs.push(c))
+    }
+
+    // Ensure a few common fallback types exist even if not present in progression
+    const fallback: MachineType[] = [
+      'research_lab' as MachineType,
+      'research_lab' as MachineType,
+      'storage' as MachineType,
+      'turret' as MachineType,
     ]
+    fallback.forEach(t => costs.push({ machineType: t, costs: [], price: 0 }))
 
     costs.forEach(cost => {
-      this.buildingCosts.set(cost.machineType, cost)
+      // store by raw string id so custom machine ids (gold_vault, belt_1, etc.) resolve reliably
+      this.buildingCosts.set(String(cost.machineType), cost)
     })
   }
 
   /**
    * Get building cost for a machine type
    */
-  getBuildingCost(machineType: MachineType): BuildingCost | undefined {
-    return this.buildingCosts.get(machineType)
+  getBuildingCost(machineType: MachineType | string): BuildingCost | undefined {
+    // Try direct lookup by provided key (enum or string)
+    const direct = this.buildingCosts.get(machineType as string)
+    if (direct) return direct
+
+    // Fallback: some callers may pass enum names or slightly different strings
+    const key = String(machineType)
+    if (this.buildingCosts.has(key)) return this.buildingCosts.get(key)
+
+    // Final fallback: search by endsWith (allow matching 'belt' -> 'belt_1')
+    for (const [k, v] of this.buildingCosts.entries()) {
+      if (k === key || k.endsWith(key) || key.endsWith(k)) return v
+    }
+
+    return undefined
   }
 
   /**
@@ -102,7 +89,8 @@ export class BuildingSystem {
   canPlaceAt(
     position: Position,
     worldMap: WorldMap,
-    existingMachines: Machine[]
+    existingMachines: Machine[],
+    machineType?: MachineType
   ): boolean {
     // Check if position is within map bounds
     if (
@@ -119,6 +107,12 @@ export class BuildingSystem {
     const tile = worldMap.tiles.get(tileKey)
     if (tile?.type === 'water') {
       return false
+    }
+
+    // Machine-specific placement rules
+    if (machineType === 'miner') {
+      // Miners must be placed on tiles that have a resource (ore)
+      if (!tile?.resource) return false
     }
 
     // Check for collision with existing machines
@@ -206,7 +200,7 @@ export class BuildingSystem {
       power_plant: 300,
       turret: 400,
       storage: 250,
-      base: 1000, // Base has high health
+      research_lab: 1000, // Research lab (formerly base) has high health
     }
     return healthMap[machineType] || 100
   }
@@ -214,7 +208,7 @@ export class BuildingSystem {
   /**
    * Get power requirement for machine type
    */
-  private getMachinePowerRequirement(machineType: MachineType): number {
+  public getMachinePowerRequirement(machineType: MachineType): number {
     const powerMap: Partial<Record<MachineType, number>> = {
       miner: 90,
       assembler: 150,
@@ -224,7 +218,7 @@ export class BuildingSystem {
       power_plant: -200, // Negative means it produces power
       turret: 40,
       storage: 5,
-      base: 0, // Base doesn't require power
+      research_lab: 0, // Research lab doesn't require power
     }
     return powerMap[machineType] || 0
   }
@@ -257,7 +251,7 @@ export class BuildingSystem {
       type: machineType,
       position,
       rotation,
-      isValid: this.canPlaceAt(position, worldMap, existingMachines),
+      isValid: this.canPlaceAt(position, worldMap, existingMachines, machineType),
     }
   }
 
@@ -275,8 +269,8 @@ export class BuildingSystem {
     const BASE_ENTRANCE_OFFSET = 2 // Distance of entrances from base center
     
     const base: Machine = {
-      id: `base_${Date.now()}`,
-      type: 'base' as MachineType,
+      id: `research_lab_${Date.now()}`,
+      type: 'research_lab' as MachineType,
       position: centerPosition,
       rotation: 0,
       inventory: [],

@@ -184,7 +184,7 @@ describe('BuildingSystem', () => {
     it('should create valid building ghost', () => {
       const ghost = buildingSystem.createGhost(
         'miner' as MachineType,
-        { x: 0, y: 0 },
+        { x: 2, y: 2 },
         0,
         testWorldMap,
         []

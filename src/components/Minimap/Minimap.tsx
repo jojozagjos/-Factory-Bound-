@@ -16,7 +16,7 @@ const Minimap = ({ width = 200, height = 200 }: MinimapProps) => {
   const currentPlayer = useGameStore(state => state.currentPlayer)
   
   const [mapOffset, setMapOffset] = useState({ x: 0, y: 0 })
-  const [mapZoom, setMapZoom] = useState(1)
+  const [mapZoom, setMapZoom] = useState(1.11)
   const [showGrid, setShowGrid] = useState<boolean>(() => {
     try {
       const v = localStorage.getItem('showGrid')
@@ -353,7 +353,7 @@ const Minimap = ({ width = 200, height = 200 }: MinimapProps) => {
 
     // Draw machines (non-base)
     machines.forEach(machine => {
-      if (machine.type === 'base' || machine.isBase) return
+      if (machine.type === 'research_lab' || machine.isBase) return
       const x = toMinimapX(machine.position.x)
       const y = toMinimapY(machine.position.y)
       switch (machine.type) {
@@ -374,7 +374,7 @@ const Minimap = ({ width = 200, height = 200 }: MinimapProps) => {
     })
 
     // Draw base position only if a base machine exists
-    const baseMachine = machines.find(m => m.type === 'base' || m.isBase)
+    const baseMachine = machines.find(m => m.type === 'research_lab' || m.isBase)
     if (baseMachine) {
       const bx = toMinimapX(baseMachine.position.x)
       const by = toMinimapY(baseMachine.position.y)

@@ -16,9 +16,9 @@
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
   border: 2px solid #0f3460;
   border-radius: 12px;
-  width: 90%;
-  max-width: 800px;
-  max-height: 80vh;
+  width: 94%;
+  max-width: 1000px;
+  max-height: 88vh;
   display: flex;
   flex-direction: column;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
@@ -65,10 +65,10 @@
 .build-categories {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 20px;
+  gap: 6px;
+  padding: 12px;
   border-right: 1px solid #0f3460;
-  min-width: 180px;
+  min-width: 140px;
   background: rgba(0, 0, 0, 0.2);
 }
 
@@ -111,19 +111,20 @@
 
 .build-items {
   flex: 1;
-  padding: 20px;
+  padding: 12px;
   overflow-y: auto;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 15px;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
   align-content: start;
+  max-height: calc(88vh - 160px);
 }
 
 .build-item {
-  background: rgba(15, 52, 96, 0.3);
-  border: 2px solid #0f3460;
+  background: rgba(15, 52, 96, 0.28);
+  border: 1px solid #0f3460;
   border-radius: 8px;
-  padding: 15px;
+  padding: 10px;
   cursor: pointer;
   transition: all 0.2s;
   display: flex;
@@ -134,8 +135,6 @@
 .build-item:hover:not(.locked) {
   background: rgba(15, 52, 96, 0.6);
   border-color: #533483;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(83, 52, 131, 0.4);
 }
 
 .build-item.locked {
@@ -177,7 +176,7 @@
 }
 
 .build-item-icon {
-  font-size: 3rem;
+  font-size: 2.2rem;
   text-align: center;
   position: relative;
 }
@@ -185,7 +184,7 @@
 .build-item-info h3 {
   margin: 0;
   color: #fff;
-  font-size: 1.1rem;
+  font-size: 0.98rem;
   text-align: center;
 }
 
@@ -343,4 +342,15 @@
   .new-badge {
     animation: none;
   }
+}
+
+.build-tooltip {
+  background: rgba(10, 10, 12, 0.95);
+  color: #fff;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.6);
+  pointer-events: none;
+  max-width: 260px;
 }

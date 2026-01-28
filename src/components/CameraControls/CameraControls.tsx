@@ -11,19 +11,22 @@ interface CameraControlsProps {
   onCameraChange: (camera: CameraState) => void
   canvasRef: React.RefObject<HTMLCanvasElement>
   worldBounds?: { width: number; height: number } // Optional world bounds for camera limiting
+  isBuilding?: boolean
 }
 
-const CameraControls = ({ camera, onCameraChange, canvasRef, worldBounds }: CameraControlsProps) => {
+const CameraControls = ({ camera, onCameraChange, canvasRef, worldBounds, isBuilding }: CameraControlsProps) => {
   // Use refs to avoid recreating event listeners on every camera update
   const cameraRef = useRef(camera)
   const onCameraChangeRef = useRef(onCameraChange)
   const worldBoundsRef = useRef(worldBounds)
+  const isBuildingRef = useRef<boolean>(!!isBuilding)
 
   // Update refs when props change
   useEffect(() => {
     cameraRef.current = camera
     onCameraChangeRef.current = onCameraChange
     worldBoundsRef.current = worldBounds
+    isBuildingRef.current = !!isBuilding
   }, [camera, onCameraChange, worldBounds])
 
   // Helper function to clamp camera position within world bounds
@@ -94,6 +97,10 @@ const CameraControls = ({ camera, onCameraChange, canvasRef, worldBounds }: Came
     let pendingDelta = { dx: 0, dy: 0 }
 
     const handleMouseDown = (e: MouseEvent) => {
+      // Do not start panning if UI is in building mode
+      if (isBuildingRef.current) {
+        return
+      }
       // Left click for panning
       if (e.button === 0) {
         isPanning = true
@@ -104,6 +111,8 @@ const CameraControls = ({ camera, onCameraChange, canvasRef, worldBounds }: Came
     }
 
     const handleMouseMove = (e: MouseEvent) => {
+      // Do not pan while building
+      if (isBuildingRef.current) return
       if (!isPanning) return
 
       const deltaX = e.clientX - lastMousePos.x
@@ -236,6 +245,9 @@ const CameraControls = ({ camera, onCameraChange, canvasRef, worldBounds }: Came
       document.removeEventListener('keydown', handleKeyDown)
     }
   }, [canvasRef])
+
+  // Keep isBuildingRef in sync when prop changes
+  useEffect(() => { isBuildingRef.current = !!isBuilding }, [isBuilding])
 
   return null // This component doesn't render anything
 }

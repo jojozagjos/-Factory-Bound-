@@ -16,6 +16,15 @@ export class ResourceSystem {
    */
   private initializeRecipes(): void {
     const recipeDefinitions: Recipe[] = [
+      // Wood plank recipe (Builderment starting recipe)
+      {
+        id: 'wood_plank',
+        name: 'Wood Plank',
+        inputs: [{ id: 'wood_log_input', name: 'wood_log', quantity: 1 }],
+        outputs: [{ id: 'wood_plank_output', name: 'wood_plank', quantity: 1 }],
+        craftingTime: 1,
+      },
+
       // Basic smelting
       {
         id: 'iron_plate',

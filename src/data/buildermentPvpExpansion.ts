@@ -1,0 +1,90 @@
+export const buildermentPvpExpansion = {
+  metadata: {
+    source: 'builderment-pvp-expansion',
+    version: '1.0-combat',
+    notes: 'Added military buildings, units, and defensive structures. Units are produced by factories but move freely (off-belt). Turrets require ammo deliveries via belt.',
+  },
+  items: [
+    { id: 'gunpowder', display_name: 'Gunpowder', type: 'component', produced_by: 'workshop', recipe: { inputs: [{ item: 'coal', qty: 1 }, { item: 'stone', qty: 1 }], time_seconds: 2.0, output_qty: 1 } },
+    { id: 'bullet_round', display_name: 'Standard Ammo', type: 'ammo', produced_by: 'machine_shop', recipe: { inputs: [{ item: 'iron_ingot', qty: 1 }, { item: 'gunpowder', qty: 1 }], time_seconds: 1.0, output_qty: 5 } },
+    { id: 'explosive_shell', display_name: 'Tank Shell', type: 'ammo', produced_by: 'forge', recipe: { inputs: [{ item: 'steel', qty: 1 }, { item: 'gunpowder', qty: 4 }], time_seconds: 3.0, output_qty: 1 } },
+    { id: 'armor_plating', display_name: 'Composite Armor', type: 'component', produced_by: 'forge', recipe: { inputs: [{ item: 'steel', qty: 2 }, { item: 'tungsten_carbide', qty: 1 }], time_seconds: 5.0, output_qty: 1 } },
+    { id: 'targeting_chip', display_name: 'AI Core', type: 'component', produced_by: 'industrial_factory', recipe: { inputs: [{ item: 'computer', qty: 1 }, { item: 'logic_circuit', qty: 2 }], time_seconds: 8.0, output_qty: 1 } },
+  ],
+  machines: [
+    {
+      id: 'barracks',
+      display_name: 'Barracks',
+      footprint: [3, 3],
+      tier: 2,
+      produces: ['unit_soldier', 'unit_rpg'],
+      consumes: [],
+      notes: 'Produces infantry units. Set a rally point to command them.',
+    },
+    {
+      id: 'vehicle_factory',
+      display_name: 'Heavy Vehicle Factory',
+      footprint: [5, 5],
+      tier: 3,
+      produces: ['unit_tank', 'unit_artillery'],
+      consumes: [],
+      notes: 'Produces heavy armor.',
+    },
+    {
+      id: 'turret_gun',
+      display_name: 'Machine Gun Turret',
+      footprint: [2, 2],
+      tier: 2,
+      produces: [],
+      consumes: ['bullet_round'],
+      notes: 'Defensive structure. Requires continuous ammo supply via belt.',
+    },
+    {
+      id: 'turret_cannon',
+      display_name: 'Heavy Cannon',
+      footprint: [3, 3],
+      tier: 3,
+      produces: [],
+      consumes: ['explosive_shell'],
+      notes: 'Long range anti-tank defense.',
+    },
+  ],
+  units: [
+    {
+      id: 'unit_soldier',
+      display_name: 'Automaton Infantry',
+      produced_by: 'barracks',
+      stats: { hp: 50, speed: 3.0, damage: 5, range: 4 },
+      recipe: { inputs: [{ item: 'iron_gear', qty: 5 }, { item: 'bullet_round', qty: 10 }], time_seconds: 5.0 },
+    },
+    {
+      id: 'unit_rpg',
+      display_name: 'Rocket Trooper',
+      produced_by: 'barracks',
+      stats: { hp: 40, speed: 2.5, damage: 25, range: 6 },
+      recipe: { inputs: [{ item: 'motor', qty: 1 }, { item: 'explosive_shell', qty: 2 }], time_seconds: 8.0 },
+    },
+    {
+      id: 'unit_tank',
+      display_name: 'Battle Tank',
+      produced_by: 'vehicle_factory',
+      stats: { hp: 500, speed: 1.5, damage: 60, range: 8 },
+      recipe: { inputs: [{ item: 'industrial_frame', qty: 1 }, { item: 'armor_plating', qty: 4 }, { item: 'turbocharger', qty: 1 }], time_seconds: 20.0 },
+    },
+    {
+      id: 'unit_artillery',
+      display_name: 'Mobile Artillery',
+      produced_by: 'vehicle_factory',
+      stats: { hp: 200, speed: 1.0, damage: 150, range: 20 },
+      recipe: { inputs: [{ item: 'tank', qty: 1 }, { item: 'targeting_chip', qty: 1 }, { item: 'explosive_shell', qty: 20 }], time_seconds: 30.0 },
+    },
+  ],
+  unlocks: [
+    { machine_id: 'turret_gun', order: 5, starting_unlocked: false, required_deliveries: [{ item: 'iron_ingot', qty: 200 }] },
+    { machine_id: 'barracks', order: 6, starting_unlocked: false, required_deliveries: [{ item: 'iron_gear', qty: 500 }, { item: 'copper_wire', qty: 500 }] },
+    { machine_id: 'turret_cannon', order: 10, starting_unlocked: false, required_deliveries: [{ item: 'steel', qty: 200 }] },
+    { machine_id: 'vehicle_factory', order: 12, starting_unlocked: false, required_deliveries: [{ item: 'concrete', qty: 1000 }, { item: 'motor', qty: 200 }] },
+  ],
+}
+
+export default buildermentPvpExpansion

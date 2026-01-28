@@ -53,8 +53,8 @@ const ProfileScreen = ({ onClose }: ProfileScreenProps) => {
                   <span className="stat-value">{currentPlayer?.stats.level || 1}</span>
                 </div>
                 <div className="stat-item">
-                  <span className="stat-label">Experience</span>
-                  <span className="stat-value">{currentPlayer?.stats.experience || 0}</span>
+                  <span className="stat-label">Cash</span>
+                  <span className="stat-value">${currentPlayer?.cash || 0}</span>
                 </div>
                 <div className="stat-item">
                   <span className="stat-label">Prestige</span>
@@ -163,9 +163,9 @@ const ProfileScreen = ({ onClose }: ProfileScreenProps) => {
               <div className="stat-card">
                 <div className="stat-icon">⭐</div>
                 <div className="stat-info">
-                  <div className="stat-label">Level Progress</div>
+                  <div className="stat-label">Cash Balance</div>
                   <div className="stat-value">
-                    {currentPlayer?.stats.experience || 0} XP
+                    ${currentPlayer?.cash || 0}
                   </div>
                 </div>
               </div>

@@ -97,7 +97,7 @@ const gridY = Math.floor(worldY / gridSize)
 **Code Quality:**
 - Entrance offset extracted as constant (BASE_ENTRANCE_OFFSET = 2)
 - Base rendering uses icon constants (BASE_ICON, BASE_ICON_FONT_SIZE)
-- Clear type checking with `machine.type === 'base'`
+- Clear type checking with `machine.type === 'research_lab'`
 
 ### 5. Map Size Increase (Phase 6 - Partially Complete) ✅
 

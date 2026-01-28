@@ -56,6 +56,43 @@ export class ProceduralGenerator {
       this.applyModifier(tiles, modifier)
     })
 
+    // Post-process resources to ensure accessibility: avoid resources entirely surrounded by water
+    const dirs = [ [0,1],[1,0],[0,-1],[-1,0], [1,1],[1,-1],[-1,1],[-1,-1] ]
+    tiles.forEach((tile) => {
+      if (!tile.resource) return
+      // Check if any neighbor is non-water (accessible)
+      let accessible = false
+      for (const [dx, dy] of dirs) {
+        const nx = tile.x + dx
+        const ny = tile.y + dy
+        const n = tiles.get(`${nx},${ny}`)
+        if (n && n.type !== 'water') { accessible = true; break }
+      }
+      if (!accessible) {
+        // Try to relocate resource to a nearby accessible tile within radius 2
+        let moved = false
+        for (let r = 1; r <= 2 && !moved; r++) {
+          for (let oy = -r; oy <= r && !moved; oy++) {
+            for (let ox = -r; ox <= r && !moved; ox++) {
+              const nx = tile.x + ox
+              const ny = tile.y + oy
+              const n = tiles.get(`${nx},${ny}`)
+              if (n && n.type !== 'water' && !n.resource) {
+                n.resource = tile.resource
+                tile.resource = undefined
+                moved = true
+                break
+              }
+            }
+          }
+        }
+        if (!moved) {
+          // No accessible nearby tile — clear the resource to avoid unreachable deposits
+          tile.resource = undefined
+        }
+      }
+    })
+
     return {
       seed: parseInt(this.rng.int32().toString()),
       width,

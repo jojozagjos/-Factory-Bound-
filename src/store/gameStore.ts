@@ -86,11 +86,14 @@ interface GameState {
   isRunning: boolean
   gameTime: number
   lastUpdateTime: number
+  sharedCash?: number
+  lastPlaceError?: { message: string; details?: any } | null
   
   // UI State
   selectedMachine: Machine | null
   isPaused: boolean
   showInventory: boolean
+  buildingMode: MachineType | null
   profilePicture: string
   profilePictureFile: string | null // Base64 or URL for custom uploaded image
   
@@ -106,6 +109,7 @@ interface GameState {
   selectMachine: (id: string | null) => void
   togglePause: () => void
   toggleInventory: () => void
+  setBuildingMode: (type: MachineType | null) => void
   unlockTech: (techId: string) => void
   saveGame: () => SaveData
   loadGame: (data: SaveData) => void
@@ -115,7 +119,7 @@ interface GameState {
   addToInventory: (item: Item) => boolean
   removeFromInventory: (itemName: string, quantity: number) => boolean
   gainExperience: (amount: number) => void
-  placeMachine: (machineType: MachineType, position: { x: number; y: number }) => boolean
+  placeMachine: (machineType: MachineType, position: { x: number; y: number }, rotation?: number) => boolean
   updateGlobalStats: (updates: Partial<GlobalStats>) => void
   loadGlobalStats: () => void
   saveGlobalStats: () => void
@@ -135,6 +139,7 @@ export const useGameStore = create<GameState>()(
     // Initial state
     session: null,
     currentPlayer: null,
+    lastPlaceError: null,
     currentGameMode: null,
     worldMap: null,
     machines: [],
@@ -145,6 +150,7 @@ export const useGameStore = create<GameState>()(
     selectedMachine: null,
     isPaused: false,
     showInventory: false,
+    buildingMode: null,
     profilePicture: '👤',
     profilePictureFile: null,
     
@@ -197,6 +203,7 @@ export const useGameStore = create<GameState>()(
     isRunning: false,
     gameTime: 0,
     lastUpdateTime: Date.now(),
+    sharedCash: 0,
 
     // Actions
     setSession: (session) => set({ session }),
@@ -214,6 +221,21 @@ export const useGameStore = create<GameState>()(
     }),
     
     removeMachine: (id) => set((state) => {
+      const machine = state.machines.find(m => m.id === id)
+      if (machine) {
+        // Refund partial resources to player when demolishing
+        const refund = state.buildingSystem.demolishMachine(machine.type)
+        if (state.currentPlayer && refund.length) {
+          refund.forEach(item => {
+            const existing = state.currentPlayer!.inventory.find(i => i.name === item.name)
+            if (existing) {
+              existing.quantity += item.quantity
+            } else {
+              state.currentPlayer!.inventory.push({ ...item })
+            }
+          })
+        }
+      }
       state.machines = state.machines.filter(m => m.id !== id)
     }),
     
@@ -237,6 +259,7 @@ export const useGameStore = create<GameState>()(
     toggleInventory: () => set((state) => {
       state.showInventory = !state.showInventory
     }),
+    setBuildingMode: (type) => set((state) => { state.buildingMode = type }),
     
     unlockTech: (techId) => {
       const state = get()
@@ -389,24 +412,17 @@ export const useGameStore = create<GameState>()(
       state.recentUnlocks = []
       
       // Initialize player if not exists
+      const isSolo = (fullSettings.maxPlayers || 1) <= 1
       if (!state.currentPlayer) {
         state.currentPlayer = {
           id: 'player_1',
           username: 'Player',
           position: { x: 50, y: 50 },
-          inventory: [
-            // Starting resources for Builderment-style gameplay - enough to build several machines
-            { id: 'iron_plate', name: 'iron_plate', quantity: 100 },
-            { id: 'copper_plate', name: 'copper_plate', quantity: 50 },
-            { id: 'iron_gear', name: 'iron_gear', quantity: 50 },
-            { id: 'electronic_circuit', name: 'electronic_circuit', quantity: 20 },
-            { id: 'stone', name: 'stone', quantity: 50 },
-            // Science packs for research
-            { id: 'science_pack_1', name: 'science_pack_1', quantity: 100 },
-            { id: 'science_pack_2', name: 'science_pack_2', quantity: 50 },
-          ],
+          inventory: [],
           health: 100,
           maxHealth: 100,
+          // Single-player gets personal cash; coop uses sharedCash
+          cash: isSolo ? 2000 : 0,
           stats: {
             level: 1,
             experience: 0,
@@ -414,6 +430,13 @@ export const useGameStore = create<GameState>()(
             unlockedTech: [],
             completedResearch: [],
           },
+        }
+        if (state.session?.mode === 'coop') {
+          state.sharedCash = 2000
+        }
+        // For convenience in single-player also set sharedCash to 2000 so HUD has a stable value
+        if (isSolo) {
+          state.sharedCash = 2000
         }
       }
 
@@ -493,8 +516,8 @@ export const useGameStore = create<GameState>()(
           draft.projectiles = simResult.projectiles
         }
         
-        // Check for resource deliveries to base (Builderment-style)
-        const base = draft.machines.find(m => m.type === 'base')
+        // Check for resource deliveries to research lab (formerly base)
+        const base = draft.machines.find(m => m.type === 'research_lab')
         if (base && base.baseEntrances) {
           let deliveredAny = false
           const newlyUnlocked: MachineType[] = []
@@ -534,6 +557,46 @@ export const useGameStore = create<GameState>()(
             draft.resourceDeliveries = deliveries
             if (newlyUnlocked.length) {
               draft.recentUnlocks = Array.from(new Set([...draft.recentUnlocks, ...newlyUnlocked]))
+            }
+          }
+        }
+
+        // Research Labs: accept any items and contribute to global unlock progression.
+        // Items entering a `research_lab` are consumed. If they match required deliveries
+        // for progression, they count toward unlocking machines/tech (global state).
+        const researchLabs = draft.machines.filter(m => m.type === 'research_lab')
+        if (researchLabs.length > 0) {
+          let labDeliveredAny = false
+          const newlyUnlockedFromLabs: string[] = []
+
+          researchLabs.forEach(lab => {
+            if (!lab.inventory || lab.inventory.length === 0) return
+
+            // Deliver every item in the lab (they are consumed on entry)
+            const itemsToDeliver = [...lab.inventory]
+            itemsToDeliver.forEach(item => {
+              if (item.quantity > 0) {
+                const { unlockedMachines } = machineUnlockSystem.deliverToBase(item.name, item.quantity)
+                labDeliveredAny = true
+                draft.globalStats.totalResourcesGathered += item.quantity
+                if (unlockedMachines.length) {
+                  newlyUnlockedFromLabs.push(...unlockedMachines)
+                  console.log(`🎓 Research Lab contributed: unlocked ${unlockedMachines.join(', ')}`)
+                }
+              }
+            })
+
+            // Clear the lab's inventory after consumption
+            lab.inventory = []
+          })
+
+          if (labDeliveredAny) {
+            const { unlocks, deliveries } = getUnlockState()
+            draft.machineUnlocks = unlocks
+            draft.resourceDeliveries = deliveries
+            if (newlyUnlockedFromLabs.length) {
+              // cast to MachineType[] because unlock system returns machine IDs compatible with MachineType
+              draft.recentUnlocks = Array.from(new Set([...draft.recentUnlocks, ...newlyUnlockedFromLabs])) as unknown as any
             }
           }
         }
@@ -617,37 +680,97 @@ export const useGameStore = create<GameState>()(
       })
     },
 
-    placeMachine: (machineType, position) => {
+    placeMachine: (machineType, position, rotation = 0) => {
       const state = get()
       const { buildingSystem, worldMap, machines, currentPlayer } = state
       
-      if (!worldMap || !currentPlayer) return false
+      if (!worldMap || !currentPlayer) {
+        console.log('placeMachine failed: missing worldMap or currentPlayer', { worldMap: !!worldMap, currentPlayer: !!currentPlayer })
+        return false
+      }
 
-      // Prevent building anything except the starting base until a base exists
-      const hasBase = state.machines.some(m => m.type === 'base')
-      if (!hasBase && machineType !== 'base') {
-        console.log('You must place a base first before building other machines')
+      // Allow building before a base exists (Builderment-style): players may build anywhere.
+      // Still enforce that only one `base` can exist.
+      const hasBase = state.machines.some(m => m.type === 'research_lab')
+      if (machineType === 'research_lab') {
+        if (hasBase) {
+          console.log('placeMachine failed: a research lab already exists; only one allowed')
+          set((s) => { s.lastPlaceError = { message: 'research_lab_already_exists' } })
+          return false
+        }
+      }
+      
+      // Check if machine is unlocked (Builderment-style).
+      // Allow the player to place the starting `research_lab` even if it's not unlocked by progression.
+      if (machineType !== 'research_lab' && !state.isMachineUnlocked(machineType)) {
+        console.log(`placeMachine failed: machine ${machineType} is not yet unlocked`)
         return false
       }
       
-      // Check if machine is unlocked (Builderment-style)
-      if (!state.isMachineUnlocked(machineType)) {
-        console.log(`Machine ${machineType} is not yet unlocked`)
+      // Check if can place. Special-case `research_lab` which occupies a 3x3 area.
+      let canPlace = false
+      if (machineType === 'research_lab') {
+        // Ensure a 3x3 centered on `position` is within bounds, not water and no collisions
+        const offsets = [-1, 0, 1]
+        canPlace = true
+        for (const dx of offsets) {
+          for (const dy of offsets) {
+            const p = { x: position.x + dx, y: position.y + dy }
+            // Out of bounds or water
+            if (
+              p.x < 0 || p.y < 0 || p.x >= worldMap.width || p.y >= worldMap.height
+            ) {
+              canPlace = false
+              break
+            }
+            const tile = worldMap.tiles.get(`${p.x},${p.y}`)
+            if (tile?.type === 'water') {
+              canPlace = false
+              break
+            }
+            const collides = machines.some(m => m.position.x === p.x && m.position.y === p.y)
+            if (collides) {
+              canPlace = false
+              break
+            }
+          }
+          if (!canPlace) break
+        }
+      } else {
+        canPlace = buildingSystem.canPlaceAt(position, worldMap, machines, machineType)
+      }
+
+      if (!canPlace) {
+        console.log('placeMachine failed: spatial validation failed for', machineType, position)
+        set((s) => { s.lastPlaceError = { message: 'spatial_validation_failed', details: { machineType, position } } })
         return false
       }
-      
-      // Check if can place
-      const canPlace = buildingSystem.canPlaceAt(
-        position,
-        worldMap,
-        machines
-      )
-      
-      if (!canPlace) return false
       
       // Check building cost
       const cost = buildingSystem.getBuildingCost(machineType)
-      if (!cost) return false
+      if (!cost) {
+        console.log('placeMachine failed: no cost info for', machineType)
+        set((s) => { s.lastPlaceError = { message: 'no_cost_info', details: { machineType } } })
+        return false
+      }
+      // Check player's cash balance or shared cash for priced buildings
+      const usingShared = state.session?.mode === 'coop'
+      if (cost.price) {
+        if (usingShared) {
+          const shared = state.sharedCash || 0
+          if (shared < cost.price) {
+              console.log('placeMachine failed: insufficient shared cash for', machineType, { required: cost.price, shared })
+              set((s) => { s.lastPlaceError = { message: 'insufficient_shared_cash', details: { required: cost.price, shared } } })
+              return false
+            }
+        } else if (currentPlayer.cash !== undefined) {
+          if (currentPlayer.cash < cost.price) {
+            console.log('placeMachine failed: insufficient cash for', machineType, { required: cost.price, cash: currentPlayer.cash })
+            set((s) => { s.lastPlaceError = { message: 'insufficient_cash', details: { required: cost.price, cash: currentPlayer.cash } } })
+            return false
+          }
+        }
+      }
       
       // Check if player has resources
       const hasResources = cost.costs.every(item => {
@@ -655,7 +778,11 @@ export const useGameStore = create<GameState>()(
         return playerItem && playerItem.quantity >= item.quantity
       })
       
-      if (!hasResources) return false
+      if (!hasResources) {
+        console.log('placeMachine failed: player lacks required resources for', machineType, { required: cost.costs, inventory: currentPlayer.inventory })
+        set((s) => { s.lastPlaceError = { message: 'missing_resources', details: { required: cost.costs, inventory: currentPlayer.inventory } } })
+        return false
+      }
       
       // Deduct resources
       let success = true
@@ -664,17 +791,30 @@ export const useGameStore = create<GameState>()(
         if (!removed) success = false
       })
       
-      if (!success) return false
+      if (!success) {
+        console.log('placeMachine failed: could not deduct resources for', machineType)
+        set((s) => { s.lastPlaceError = { message: 'deduction_failed', details: { machineType } } })
+        return false
+      }
+
+      // Deduct cash price (if any) from player or shared pool
+      if (cost.price) {
+        if (state.session?.mode === 'coop') {
+          set((s) => { s.sharedCash = (s.sharedCash || 0) - (cost.price || 0) })
+        } else {
+          set((s) => { if (s.currentPlayer) s.currentPlayer.cash = (s.currentPlayer.cash || 0) - (cost.price || 0) })
+        }
+      }
       
       // Create and place machine
       const newMachine: Machine = {
         id: generateUniqueId('machine'),
         type: machineType,
         position,
-        rotation: 0,
+        rotation,
         inventory: [],
         power: {
-          required: 0,
+          required: state.buildingSystem.getMachinePowerRequirement(machineType as any),
           available: 0,
           connected: false,
         },
@@ -687,6 +827,7 @@ export const useGameStore = create<GameState>()(
         // Update global stats
         state.globalStats.totalMachinesPlaced++
         localStorage.setItem('factory_bound_global_stats', JSON.stringify(state.globalStats))
+        state.lastPlaceError = null
       })
       
       return true
@@ -755,18 +896,13 @@ export const useGameStore = create<GameState>()(
       return true
     },
 
+    // Builderment-style: no XP progression. Convert experience rewards into cash.
     gainExperience: (amount) => set((state) => {
       const player = state.currentPlayer
       if (!player) return
 
-      player.stats.experience += amount
-
-      // Level up calculation
-      const xpForNextLevel = Math.floor(100 * Math.pow(1.5, player.stats.level))
-      while (player.stats.experience >= xpForNextLevel) {
-        player.stats.level++
-        player.stats.experience -= xpForNextLevel
-      }
+      // Award cash instead of XP. Use amount as direct currency for simplicity.
+      player.cash = (player.cash || 0) + amount
     }),
 
     updateGlobalStats: (updates) => set((state) => {

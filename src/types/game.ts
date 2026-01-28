@@ -36,6 +36,20 @@ export enum MachineType {
   SPLITTER = 'splitter',
   UNDERGROUND_BELT = 'underground_belt',
   
+  // Transport Vehicles
+  BOAT_1 = 'boat_1',
+  BOAT_2 = 'boat_2',
+  BOAT_3 = 'boat_3',
+  BOAT_4 = 'boat_4',
+  TRAIN_1 = 'train_1',
+  TRAIN_2 = 'train_2',
+  TRAIN_3 = 'train_3',
+  TRAIN_4 = 'train_4',
+  
+  // Transport Stations
+  DOCK_STATION = 'dock_station',
+  RAIL_STATION = 'rail_station',
+  
   // Power
   POWER_PLANT = 'power_plant',
   SOLAR_PANEL = 'solar_panel',
@@ -49,7 +63,14 @@ export enum MachineType {
   // Storage & Special
   STORAGE = 'storage',
   RESEARCH_LAB = 'research_lab',
-  BASE = 'base', // Player's main base
+}
+
+export interface VehicleRoute {
+  id: string
+  waypointIds: string[] // IDs of dock/rail stations in order
+  currentWaypointIndex: number
+  isActive: boolean
+  loop: boolean // If true, return to start after reaching end
 }
 
 export interface Machine {
@@ -65,6 +86,9 @@ export interface Machine {
   nodeProgram?: NodeProgram
   isBase?: boolean // Flag for starting base
   baseEntrances?: Position[] // For base type, absolute grid coordinates of 4 entrances
+  route?: VehicleRoute // For boats/trains: programmed route
+  currentRouteTarget?: string // Current destination waypoint ID
+  routeProgress?: number // 0-1 progress to current waypoint
 }
 
 // Item and Recipe types
@@ -154,6 +178,7 @@ export interface Player {
   stats: PlayerStats
   isGuest?: boolean // True for multiplayer guests (limited permissions)
   isHost?: boolean // True for lobby host
+  cash?: number // In-game currency (Builderment-style)
 }
 
 export interface PlayerStats {
@@ -337,6 +362,7 @@ export interface BuildingCost {
   machineType: MachineType
   costs: Item[]
   requiredTech?: string
+  price?: number // cash cost to place this building
 }
 
 // Combat System

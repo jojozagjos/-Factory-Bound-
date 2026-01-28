@@ -1,9 +1,10 @@
 import type { MachineUnlock, ResourceDelivery, MachineType } from '../types/game'
+import { buildermentProgression } from '../data/buildermentProgression'
 
 /**
  * Builderment-style progression: machines unlock by delivering items to base.
  * Players must produce resources, which unlocks new machines in logical order.
- * This creates a natural progression and engagement loop.
+ * Uses exact Builderment v5.0 progression data.
  */
 export class MachineUnlockSystem {
   private unlocks: MachineUnlock[] = []
@@ -14,93 +15,34 @@ export class MachineUnlockSystem {
   }
 
   /**
-   * Initialize default Builderment-style unlock progression
+   * Initialize from exact Builderment progression data
    */
   private initializeUnlocks(): void {
-    this.unlocks = [
-      // Tier 1: Basic production
-      {
-        machineType: 'miner' as MachineType,
-        requiredDeliveries: [{ id: 'copper_ore', name: 'copper_ore', quantity: 10 }],
-        unlocked: true,
-        order: 0,
-      },
-      {
-        machineType: 'smelter' as MachineType,
-        requiredDeliveries: [{ id: 'copper_ore', name: 'copper_ore', quantity: 30 }],
-        unlocked: false,
-        order: 1,
-      },
-      // Tier 2: Logistics
-      {
-        machineType: 'belt' as MachineType,
-        requiredDeliveries: [{ id: 'iron_plate', name: 'iron_plate', quantity: 10 }],
-        unlocked: false,
-        order: 2,
-      },
-      {
-        machineType: 'inserter' as MachineType,
-        requiredDeliveries: [{ id: 'iron_gear_wheel', name: 'iron_gear_wheel', quantity: 5 }],
-        unlocked: false,
-        order: 3,
-      },
-      // Tier 3: Production
-      {
-        machineType: 'assembler' as MachineType,
-        requiredDeliveries: [
-          { id: 'iron_plate', name: 'iron_plate', quantity: 30 },
-          { id: 'copper_plate', name: 'copper_plate', quantity: 20 },
-        ],
-        unlocked: false,
-        order: 4,
-      },
-      // Tier 4: Power
-      {
-        machineType: 'power_plant' as MachineType,
-        requiredDeliveries: [
-          { id: 'coal', name: 'coal', quantity: 50 },
-          { id: 'stone', name: 'stone', quantity: 100 },
-        ],
-        unlocked: false,
-        order: 5,
-      },
-      // Tier 5: Combat
-      {
-        machineType: 'wall' as MachineType,
-        requiredDeliveries: [{ id: 'stone', name: 'stone', quantity: 50 }],
-        unlocked: false,
-        order: 6,
-      },
-      {
-        machineType: 'turret' as MachineType,
-        requiredDeliveries: [
-          { id: 'iron_plate', name: 'iron_plate', quantity: 20 },
-          { id: 'copper_plate', name: 'copper_plate', quantity: 10 },
-        ],
-        unlocked: false,
-        order: 7,
-      },
-      // Tier 6: Advanced
-      {
-        machineType: 'research_lab' as MachineType,
-        requiredDeliveries: [
-          { id: 'iron_plate', name: 'iron_plate', quantity: 50 },
-          { id: 'copper_plate', name: 'copper_plate', quantity: 50 },
-          { id: 'electronic_circuit', name: 'electronic_circuit', quantity: 5 },
-        ],
-        unlocked: false,
-        order: 8,
-      },
-    ]
+    // Load exact Builderment progression
+    this.unlocks = buildermentProgression.unlocks.map(unlock => ({
+      machineType: unlock.machine_id as MachineType,
+      requiredDeliveries: unlock.required_deliveries.map(req => ({
+        id: req.item,
+        name: req.item,
+        quantity: req.qty
+      })),
+      unlocked: unlock.starting_unlocked,
+      order: unlock.order,
+    }))
 
-    // Initialize delivery tracking
-    this.deliveries = this.unlocks
-      .flatMap(u => u.requiredDeliveries)
-      .map(req => ({
-        itemName: req.name,
-        quantityDelivered: 0,
-        quantityRequired: req.quantity,
-      }))
+    // Initialize delivery tracking from unlocks
+    const allDeliveries = this.unlocks.flatMap(u => u.requiredDeliveries)
+    const uniqueDeliveries = new Map<string, { name: string; quantity: number }>()
+    allDeliveries.forEach(req => {
+      if (!uniqueDeliveries.has(req.name)) {
+        uniqueDeliveries.set(req.name, { name: req.name, quantity: req.quantity })
+      }
+    })
+    this.deliveries = Array.from(uniqueDeliveries.values()).map(item => ({
+      itemName: item.name,
+      quantityDelivered: 0,
+      quantityRequired: item.quantity,
+    }))
   }
 
   /**

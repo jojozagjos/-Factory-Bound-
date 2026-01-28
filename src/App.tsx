@@ -4,6 +4,7 @@ import GameCanvas from './components/GameCanvas/GameCanvas'
 import NodeEditor from './components/NodeEditor/NodeEditor'
 import HUD from './components/HUD/HUD'
 import Tutorial from './components/Tutorial/Tutorial'
+import KeybindHandler from './components/KeybindHandler/KeybindHandler'
 import BuildMenu from './components/BuildMenu/BuildMenu'
 import TechTree from './components/TechTree/TechTree'
 import SaveManager from './components/SaveManager/SaveManager'
@@ -24,6 +25,7 @@ import { achievementSystem } from './systems/AchievementSystem/AchievementSystem
 import { GameMode } from './types/game'
 import type { GameSession } from './types/game'
 import { audioSystem } from './systems/AudioSystem/AudioSystem'
+import { RouteSystem } from './systems/RouteSystem'
 import './App.css'
 
 type GameState = 'intro' | 'login' | 'menu' | 'game' | 'editor'
@@ -83,7 +85,31 @@ function App() {
     }
 
     window.addEventListener('tutorialComplete', handleTutorialComplete)
-    return () => window.removeEventListener('tutorialComplete', handleTutorialComplete)
+    // Global UI toggles from keybind handler
+    const onToggleBuild = () => setShowBuildMenu(prev => !prev)
+    const onToggleTech = () => setShowTechTree(prev => !prev)
+    const onToggleNodeEditor = () => setShowNodeEditor(prev => !prev)
+    const onToggleMinimap = () => window.dispatchEvent(new CustomEvent('toggleMinimap'))
+    window.addEventListener('toggleBuildMenu', onToggleBuild)
+    window.addEventListener('toggleTechTree', onToggleTech)
+    window.addEventListener('toggleNodeEditor', onToggleNodeEditor)
+    window.addEventListener('toggleMinimap', onToggleMinimap)
+    return () => {
+      window.removeEventListener('tutorialComplete', handleTutorialComplete)
+      window.removeEventListener('toggleBuildMenu', onToggleBuild)
+      window.removeEventListener('toggleTechTree', onToggleTech)
+      window.removeEventListener('toggleNodeEditor', onToggleNodeEditor)
+      window.removeEventListener('toggleMinimap', onToggleMinimap)
+    }
+  }, [])
+
+  useEffect(() => {
+    const handleGlobalCancel = () => {
+      // Forward cancel to components that expect it
+      window.dispatchEvent(new CustomEvent('globalCancelForward'))
+    }
+    window.addEventListener('globalCancel', handleGlobalCancel)
+    return () => window.removeEventListener('globalCancel', handleGlobalCancel)
   }, [])
 
   // Apply screen shake effect
@@ -179,6 +205,7 @@ function App() {
         unlockedTech: [],
         completedResearch: [],
       },
+      cash: 2000,
     })
     setGameState('menu')
   }
@@ -253,6 +280,34 @@ function App() {
     }
   }
 
+  const handleSaveProgram = (programId: string, machineId: string) => {
+    // When a program is saved for a boat/train, parse it as a route
+    const machine = machines.find(m => m.id === machineId)
+    if (machine && (machine.type.includes('boat_') || machine.type.includes('train_'))) {
+      // Try to retrieve the saved program from localStorage
+      try {
+        const saved = JSON.parse(localStorage.getItem('node_programs') || '{}')
+        const program = saved[programId]?.data
+        if (program) {
+          // Parse the program as a route
+          const route = RouteSystem.parseRouteFromProgram(
+            program.nodes || [],
+            program.connections || [],
+            machineId,
+            machines
+          )
+          if (route) {
+            // Update the machine with the route using the updateMachine action
+            const updateMachineAction = useGameStore.getState().updateMachine
+            updateMachineAction(machineId, { route })
+          }
+        }
+      } catch (err) {
+        console.error('Failed to parse route program:', err)
+      }
+    }
+  }
+
   const handleReturnToMenu = () => {
     stopGame()
     setGameState('menu')
@@ -323,6 +378,7 @@ function App() {
 
   return (
     <div className="app">
+      <KeybindHandler />
       {gameState === 'login' && (
         <LoginScreen onLogin={handleLogin} />
       )}
@@ -348,7 +404,11 @@ function App() {
           />
           <UnlockProgress />
           {showNodeEditor && (
-            <NodeEditor onClose={() => setShowNodeEditor(false)} />
+            <NodeEditor 
+              onClose={() => setShowNodeEditor(false)}
+              selectedMachine={selectedMachine}
+              onSaveProgram={handleSaveProgram}
+            />
           )}
           {showBuildMenu && (
             <BuildMenu 
@@ -396,5 +456,4 @@ function App() {
     </div>
   )
 }
-
 export default App

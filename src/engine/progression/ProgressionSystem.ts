@@ -9,6 +9,18 @@ export class ProgressionSystem {
 
   private initializeTechTree(): TechNode[] {
     return [
+      // Starter pack: exact starting machines available to players at new game
+      {
+        id: 'starter_pack',
+        name: 'Starter Pack',
+        description: 'Starting buildings: Extractor T1, Workshop, Research Lab, Gold Vault, Belt T1',
+        paradigm: 'production' as TechParadigm,
+        cost: [],
+        dependencies: [],
+        unlocks: ['extractor_1', 'workshop', 'research_lab', 'gold_vault', 'belt_1'],
+        researched: true,
+        researchTime: 0,
+      },
       // Logistics Paradigm
       {
         id: 'basic_logistics',
@@ -17,7 +29,7 @@ export class ProgressionSystem {
         paradigm: 'logistics' as TechParadigm,
         cost: [], // Free starting tech
         dependencies: [],
-        unlocks: ['belt', 'inserter'],
+        unlocks: ['belt_1', 'robotic_arm_1'],
         researched: true, // Starting tech
         researchTime: 0,
       },
@@ -55,7 +67,7 @@ export class ProgressionSystem {
         paradigm: 'production' as TechParadigm,
         cost: [], // Free starting tech
         dependencies: [],
-        unlocks: ['assembler', 'miner'],
+        unlocks: ['workshop', 'extractor_1'],
         researched: true,
         researchTime: 0,
       },
