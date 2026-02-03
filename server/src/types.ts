@@ -29,7 +29,7 @@ export interface GameSession {
 }
 
 export interface GameSettings {
-  mode: 'coop' | 'pvp' | 'ranked'
+  mode?: 'coop' | 'pvp' | 'ranked' // For compatibility
   maxPlayers: number
   difficulty: 'easy' | 'normal' | 'hard' | 'nightmare'
   pvpEnabled: boolean
@@ -40,6 +40,7 @@ export interface GameSettings {
   enemyFactoriesEnabled: boolean
   oceanEnemiesEnabled: boolean
   maxEnemyBases: number
+  gameMode: 'automation' | 'coop' | 'pvp' | 'ranked'
 }
 
 export interface NetworkAction {

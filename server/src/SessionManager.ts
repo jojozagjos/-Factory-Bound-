@@ -30,7 +30,10 @@ export class SessionManager {
     const sessions = Array.from(this.sessions.values())
     
     if (mode) {
-      return sessions.filter(s => s.settings.mode === mode && s.status === 'waiting')
+      return sessions.filter(s => 
+        (s.settings.gameMode === mode || s.settings.mode === mode) && 
+        s.status === 'waiting'
+      )
     }
     
     return sessions.filter(s => s.status === 'waiting')
