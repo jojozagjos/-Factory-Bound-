@@ -2,6 +2,9 @@ import type { Machine, Enemy, Projectile } from '../../types/game'
 import { ResourceSystem } from '../../systems/ResourceSystem'
 import { CombatSystem } from '../../systems/CombatSystem'
 import { NodeProgramRuntime } from '../../systems/NodeProgramRuntime'
+import { RouteSystem } from '../../systems/RouteSystem'
+import { UnitSystem, Unit } from '../../systems/UnitSystem'
+import { buildermentPvpExpansion } from '../../data/buildermentPvpExpansion'
 import { Profiler } from '../utils/Profiler'
 
 export class SimulationEngine {
@@ -11,6 +14,7 @@ export class SimulationEngine {
   private resourceSystem: ResourceSystem
   private combatSystem: CombatSystem
   private nodeProgramRuntime: NodeProgramRuntime
+  private unitSystem: UnitSystem
   private turretCooldowns: Map<string, number>
   private profiler: Profiler
 
@@ -19,6 +23,7 @@ export class SimulationEngine {
     this.resourceSystem = new ResourceSystem()
     this.combatSystem = new CombatSystem()
     this.nodeProgramRuntime = new NodeProgramRuntime()
+    this.unitSystem = new UnitSystem()
     this.turretCooldowns = new Map()
     this.profiler = new Profiler()
   }
@@ -28,6 +33,7 @@ export class SimulationEngine {
     machines: Machine[]
     enemies: Enemy[]
     projectiles: Projectile[]
+    units: Unit[]
     removedEntities: string[]
   } {
     const tickStart = performance.now()
@@ -49,7 +55,7 @@ export class SimulationEngine {
       console.log(`Simulation avg ${this.profiler.getAverage().toFixed(2)}ms, max ${this.profiler.getMax().toFixed(2)}ms over ${this.tickCount} ticks`)
     }
 
-    return { machines, enemies, projectiles, removedEntities }
+    return { machines, enemies, projectiles, units: this.unitSystem.units, removedEntities }
   }
 
   private tick(
@@ -68,6 +74,17 @@ export class SimulationEngine {
       if (machine.type === 'turret' && machine.power.connected && machine.power.available >= machine.power.required) {
         this.updateTurret(machine, enemies, projectiles)
       }
+    })
+
+    // Update units
+    this.unitSystem.update(1 / this.tickRate, {
+      machines: machines.map(m => ({
+        id: m.id,
+        position: m.position,
+        health: m.health,
+        owner: (m as any).owner,
+      })),
+      enemyUnits: this.unitSystem.units,
     })
 
     // Update enemies
@@ -105,6 +122,27 @@ export class SimulationEngine {
       case 'turret':
         // Turret needs access to enemies and projectiles
         // This will be handled in the tick method
+        break
+      // Vehicle types
+      case 'boat_1':
+      case 'boat_2':
+      case 'boat_3':
+      case 'boat_4':
+      case 'train_1':
+      case 'train_2':
+      case 'train_3':
+      case 'train_4':
+        this.updateVehicle(machine, allMachines)
+        break
+      // Station types
+      case 'dock_station':
+      case 'rail_station':
+        this.updateStation(machine, allMachines)
+        break
+      // Military buildings
+      case 'barracks':
+      case 'vehicle_factory':
+        this.updateMilitaryBuilding(machine, allMachines)
         break
     }
 
@@ -270,6 +308,242 @@ export class SimulationEngine {
     }
   }
 
+  private updateVehicle(vehicle: Machine, allMachines: Machine[]): void {
+    // Boats and trains move along programmed routes
+    if (!vehicle.route || !vehicle.route.isActive || vehicle.route.waypointIds.length === 0) {
+      return // No route or inactive
+    }
+
+    // Get current target waypoint
+    const currentWaypoint = RouteSystem.getCurrentWaypoint(vehicle, allMachines)
+    if (!currentWaypoint) {
+      console.warn(`Vehicle ${vehicle.id} has invalid waypoint, stopping route`)
+      vehicle.route.isActive = false
+      return
+    }
+
+    // Initialize route progress if not set
+    if (vehicle.routeProgress === undefined) {
+      vehicle.routeProgress = 0
+    }
+
+    // Calculate movement speed based on vehicle tier
+    // Speed is in tiles per second, divide by 60 for tiles per tick
+    const speedMap: Record<string, number> = {
+      'boat_1': 5,
+      'boat_2': 8,
+      'boat_3': 12,
+      'boat_4': 15,
+      'train_1': 10,
+      'train_2': 15,
+      'train_3': 20,
+      'train_4': 25,
+    }
+    const speed = speedMap[vehicle.type] || 5
+    const tilesPerTick = speed / 60 // Convert to per-tick movement
+
+    // Calculate distance to target
+    const dx = currentWaypoint.position.x - vehicle.position.x
+    const dy = currentWaypoint.position.y - vehicle.position.y
+    const distance = Math.sqrt(dx * dx + dy * dy)
+
+    // Check if arrived at waypoint
+    if (distance < 1) {
+      // Arrived! Load/unload at station
+      this.vehicleLoadUnload(vehicle, currentWaypoint)
+
+      // Move to next waypoint
+      vehicle.route.currentWaypointIndex++
+      
+      // Check if route is complete
+      if (vehicle.route.currentWaypointIndex >= vehicle.route.waypointIds.length) {
+        if (vehicle.route.loop) {
+          // Loop back to start
+          vehicle.route.currentWaypointIndex = 0
+          vehicle.routeProgress = 0
+        } else {
+          // End of route
+          vehicle.route.isActive = false
+          console.log(`Vehicle ${vehicle.id} completed route`)
+        }
+      } else {
+        vehicle.routeProgress = 0
+      }
+      return
+    }
+
+    // Move toward waypoint
+    const moveX = (dx / distance) * tilesPerTick
+    const moveY = (dy / distance) * tilesPerTick
+    
+    vehicle.position.x += moveX
+    vehicle.position.y += moveY
+    vehicle.routeProgress = Math.min(1, vehicle.routeProgress + (tilesPerTick / distance))
+
+    // Update rotation to face movement direction
+    vehicle.rotation = Math.atan2(dy, dx) * (180 / Math.PI)
+  }
+
+  private vehicleLoadUnload(vehicle: Machine, station: Machine): void {
+    // Transfer items between vehicle and station
+    // Station acts as a buffer - vehicles pick up items when arriving
+    // and drop off items when leaving
+
+    // Get vehicle capacity based on type
+    const capacityMap: Record<string, number> = {
+      'boat_1': 50,
+      'boat_2': 100,
+      'boat_3': 200,
+      'boat_4': 300,
+      'train_1': 100,
+      'train_2': 200,
+      'train_3': 300,
+      'train_4': 500,
+    }
+    const capacity = capacityMap[vehicle.type] || 50
+
+    // Calculate current vehicle inventory size
+    const currentLoad = vehicle.inventory.reduce((sum, item) => sum + item.quantity, 0)
+
+    // UNLOAD: Transfer items from vehicle to station (if station has space)
+    if (vehicle.inventory.length > 0) {
+      const stationLoad = station.inventory.reduce((sum, item) => sum + item.quantity, 0)
+      const stationCapacity = 1000 // Stations have large capacity
+      
+      if (stationLoad < stationCapacity) {
+        // Transfer items
+        for (const vehicleItem of vehicle.inventory) {
+          const existingItem = station.inventory.find(i => i.name === vehicleItem.name)
+          if (existingItem) {
+            const transferQty = Math.min(vehicleItem.quantity, stationCapacity - stationLoad)
+            existingItem.quantity += transferQty
+            vehicleItem.quantity -= transferQty
+          } else {
+            station.inventory.push({ ...vehicleItem })
+          }
+        }
+        
+        // Remove empty items
+        vehicle.inventory = vehicle.inventory.filter(item => item.quantity > 0)
+        console.log(`Vehicle ${vehicle.id} unloaded at station ${station.id}`)
+      }
+    }
+
+    // LOAD: Transfer items from station to vehicle (if vehicle has space)
+    if (currentLoad < capacity && station.inventory.length > 0) {
+      const availableSpace = capacity - currentLoad
+      
+      for (const stationItem of station.inventory) {
+        if (availableSpace <= 0) break
+        
+        const transferQty = Math.min(stationItem.quantity, availableSpace)
+        const existingVehicleItem = vehicle.inventory.find(i => i.name === stationItem.name)
+        
+        if (existingVehicleItem) {
+          existingVehicleItem.quantity += transferQty
+        } else {
+          vehicle.inventory.push({
+            id: `item_${Date.now()}_${Math.random()}`,
+            name: stationItem.name,
+            quantity: transferQty,
+          })
+        }
+        
+        stationItem.quantity -= transferQty
+      }
+      
+      // Remove empty items from station
+      station.inventory = station.inventory.filter(item => item.quantity > 0)
+      console.log(`Vehicle ${vehicle.id} loaded at station ${station.id}`)
+    }
+  }
+
+  private updateMilitaryBuilding(building: Machine, _allMachines: Machine[]): void {
+    // Barracks and vehicle factories produce units when they have resources
+    interface MilitaryBuilding extends Machine {
+      productionQueue?: Array<{ unitType: string; progress: number; maxProgress: number }>
+      productionProgress?: number
+    }
+    
+    const militaryBuilding = building as MilitaryBuilding
+    
+    // Check if building has a production queue
+    if (!militaryBuilding.productionQueue) {
+      militaryBuilding.productionQueue = []
+      militaryBuilding.productionProgress = 0
+    }
+
+    const queue = militaryBuilding.productionQueue
+    
+    // If no units in queue and has inventory, try to start production
+    if (queue.length === 0 && building.inventory.length > 0) {
+      // Try to find a unit recipe we can produce
+      const pvpUnits: any[] = buildermentPvpExpansion.units as any[]
+      const producibleUnits = pvpUnits.filter((u: any) => u.produced_by === building.type)
+      
+      for (const unitDef of producibleUnits) {
+        const recipeInputs: any[] = unitDef.recipe?.inputs || []
+        
+        // Check if we have all ingredients
+        const hasIngredients = recipeInputs.every((input: any) => {
+          const item = building.inventory.find(i => i.name === input.item)
+          return item && item.quantity >= input.qty
+        })
+        
+        if (hasIngredients) {
+          // Consume ingredients
+          recipeInputs.forEach((input: any) => {
+            const item = building.inventory.find(i => i.name === input.item)
+            if (item) {
+              item.quantity -= input.qty
+            }
+          })
+          
+          // Remove empty items
+          building.inventory = building.inventory.filter(i => i.quantity > 0)
+          
+          // Start production
+          queue.push({
+            unitType: unitDef.id,
+            progress: 0,
+            maxProgress: unitDef.recipe.time_seconds * this.tickRate, // Convert to ticks
+          })
+          
+          console.log(`${building.type} started producing ${unitDef.id}`)
+          break
+        }
+      }
+    }
+    
+    // Process production queue
+    if (queue.length > 0) {
+      const current = queue[0]
+      current.progress++
+      
+      if (current.progress >= current.maxProgress) {
+        // Unit complete! Spawn it
+        const spawnX = building.position.x + 2 // Spawn to the right of building
+        const spawnY = building.position.y
+        
+        const owner = (building as any).owner || 'local'
+        this.unitSystem.spawnUnit(current.unitType, spawnX, spawnY, owner)
+        
+        console.log(`${building.type} completed ${current.unitType}`)
+        queue.shift()
+      }
+    }
+  }
+
+  private updateStation(_station: Machine, _allMachines: Machine[]): void {
+    // Stations can accept items from belts/inserters and hold them for vehicles
+    // They also output items that vehicles delivered
+    // This is handled by normal belt/inserter logic, so stations just need to exist
+    // as valid targets for item transfer
+    
+    // No special update logic needed - stations are passive buffers
+    // The vehicleLoadUnload method handles the vehicle interaction
+  }
+
   private executeNodeProgram(machine: Machine): void {
     // Use the new safe runtime
     if (!machine.nodeProgram) return
@@ -401,6 +675,16 @@ export class SimulationEngine {
       belt: 5,
       inserter: 13,
       turret: 40,
+      boat_1: 20,
+      boat_2: 30,
+      boat_3: 45,
+      boat_4: 60,
+      train_1: 40,
+      train_2: 60,
+      train_3: 80,
+      train_4: 100,
+      dock_station: 25,
+      rail_station: 35,
     }
     return powerMap[type] || 0
   }

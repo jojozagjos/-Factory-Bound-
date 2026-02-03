@@ -16,6 +16,7 @@ export interface Unit {
   targetId?: string | null
   path?: { x: number; y: number }[]
   owner?: string // player id
+  lastAttackTime?: number // Track last attack for cooldown
 }
 
 export class UnitSystem {
@@ -48,10 +49,50 @@ export class UnitSystem {
   }
 
   /** Simple update called every tick with delta seconds */
-  update(dt: number, _world: { isTileBlocked?: (x: number, y: number) => boolean } = {}) {
+  update(
+    dt: number, 
+    world: { 
+      isTileBlocked?: (x: number, y: number) => boolean,
+      machines?: Array<{ id: string; position: { x: number; y: number }; health: number; owner?: string }>,
+      enemyUnits?: Unit[]
+    } = {}
+  ) {
     for (const u of this.units) {
       if (u.state === 'dead') continue
-      // follow path if moving
+      
+      // Handle attacking state
+      if (u.state === 'attacking' && u.targetId) {
+        const target = this.findTarget(u.targetId, world.machines || [], world.enemyUnits || [])
+        
+        if (!target) {
+          // Target lost, go idle
+          u.state = 'idle'
+          u.targetId = null
+          continue
+        }
+
+        // Calculate distance to target
+        const dx = target.x - u.x
+        const dy = target.y - u.y
+        const dist = Math.sqrt(dx * dx + dy * dy)
+
+        // Check if in range to attack
+        if (dist <= u.range) {
+          // In range - attack every second
+          if (!u.lastAttackTime || Date.now() - u.lastAttackTime >= 1000) {
+            this.attackTarget(u, target)
+            u.lastAttackTime = Date.now()
+          }
+        } else {
+          // Move toward target
+          const travel = u.speed * dt
+          u.x += (dx / dist) * Math.min(travel, dist)
+          u.y += (dy / dist) * Math.min(travel, dist)
+        }
+        continue
+      }
+      
+      // Handle moving state - follow path if moving
       if (u.state === 'moving' && u.path && u.path.length > 0) {
         const next = u.path[0]
         const dx = next.x - u.x
@@ -69,11 +110,114 @@ export class UnitSystem {
         }
       }
 
-      // TODO: attacking logic, target selection, simple AI
+      // Auto-engage nearby enemies if idle
+      if (u.state === 'idle') {
+        const nearbyEnemy = this.findNearbyEnemy(u, world.machines || [], world.enemyUnits || [])
+        if (nearbyEnemy) {
+          u.targetId = nearbyEnemy.id
+          u.state = 'attacking'
+        }
+      }
     }
 
     // Cleanup dead
     this.units = this.units.filter(u => u.state !== 'dead')
+  }
+
+  /** Find a target by ID (could be a machine or another unit) */
+  private findTarget(
+    targetId: string,
+    machines: Array<{ id: string; position: { x: number; y: number }; health: number; owner?: string }>,
+    units: Unit[]
+  ): { id: string; x: number; y: number; health: number; isUnit: boolean; owner?: string } | null {
+    // Check machines
+    const machine = machines.find(m => m.id === targetId)
+    if (machine && machine.health > 0) {
+      return {
+        id: machine.id,
+        x: machine.position.x,
+        y: machine.position.y,
+        health: machine.health,
+        isUnit: false,
+        owner: machine.owner,
+      }
+    }
+
+    // Check units
+    const unit = units.find(u => u.id === targetId)
+    if (unit && unit.state !== 'dead') {
+      return {
+        id: unit.id,
+        x: unit.x,
+        y: unit.y,
+        health: unit.hp,
+        isUnit: true,
+        owner: unit.owner,
+      }
+    }
+
+    return null
+  }
+
+  /** Attack a target */
+  private attackTarget(
+    attacker: Unit,
+    target: { id: string; x: number; y: number; health: number; isUnit: boolean }
+  ): void {
+    // Apply damage
+    target.health -= attacker.damage
+    
+    // If target is a unit, update its HP
+    if (target.isUnit) {
+      const targetUnit = this.units.find(u => u.id === target.id)
+      if (targetUnit) {
+        targetUnit.hp -= attacker.damage
+        if (targetUnit.hp <= 0) {
+          targetUnit.state = 'dead'
+        }
+      }
+    }
+    
+    console.log(`Unit ${attacker.id} attacked ${target.id} for ${attacker.damage} damage`)
+  }
+
+  /** Find nearby enemy within auto-engage range */
+  private findNearbyEnemy(
+    unit: Unit,
+    machines: Array<{ id: string; position: { x: number; y: number }; health: number; owner?: string }>,
+    units: Unit[]
+  ): { id: string } | null {
+    const engageRange = unit.range * 1.5 // Auto-engage at 1.5x attack range
+
+    // Find nearest enemy unit
+    let nearestEnemy: { id: string; dist: number } | null = null
+    
+    for (const other of units) {
+      if (other.owner === unit.owner || other.state === 'dead') continue
+      
+      const dx = other.x - unit.x
+      const dy = other.y - unit.y
+      const dist = Math.sqrt(dx * dx + dy * dy)
+      
+      if (dist <= engageRange && (!nearestEnemy || dist < nearestEnemy.dist)) {
+        nearestEnemy = { id: other.id, dist }
+      }
+    }
+
+    // Find nearest enemy building
+    for (const machine of machines) {
+      if (machine.owner === unit.owner || machine.health <= 0) continue
+      
+      const dx = machine.position.x - unit.x
+      const dy = machine.position.y - unit.y
+      const dist = Math.sqrt(dx * dx + dy * dy)
+      
+      if (dist <= engageRange && (!nearestEnemy || dist < nearestEnemy.dist)) {
+        nearestEnemy = { id: machine.id, dist }
+      }
+    }
+
+    return nearestEnemy
   }
 
   /** Assign a move command (path) to a set of units */

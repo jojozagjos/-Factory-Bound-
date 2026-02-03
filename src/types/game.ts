@@ -60,6 +60,12 @@ export enum MachineType {
   LASER_TURRET = 'laser_turret',
   WALL = 'wall',
   
+  // Military (PVP)
+  BARRACKS = 'barracks',
+  VEHICLE_FACTORY = 'vehicle_factory',
+  TURRET_GUN = 'turret_gun',
+  TURRET_CANNON = 'turret_cannon',
+
   // Storage & Special
   STORAGE = 'storage',
   RESEARCH_LAB = 'research_lab',
