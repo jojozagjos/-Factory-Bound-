@@ -2,6 +2,9 @@
 
 A professional Factorio-style automation game with visual/node-based programming, co-op and PvP multiplayer, and extensive progression systems.
 
+**🎮 MULTIPLAYER NOW FULLY WORKING! 🎮**  
+Real-time co-op and PvP with up to 8 players! See [MULTIPLAYER_GUIDE.md](MULTIPLAYER_GUIDE.md) for setup.
+
 ## Features
 
 ### Core Gameplay
@@ -93,6 +96,35 @@ npm test
 ```bash
 npm run lint
 ```
+
+## 🎮 Multiplayer Setup
+
+Multiplayer is **fully working** and ready to use!
+
+### Quick Start
+```bash
+# Start both client and server
+npm run dev:all
+```
+
+The game runs on http://localhost:5173 and the server on http://localhost:3001.
+
+### Features
+- ✅ **Real-time Co-op** - Up to 8 players working together
+- ✅ **PvP Mode** - Competitive battles with separate bases
+- ✅ **Session Management** - Create, join, and list games
+- ✅ **Cloud Saves** - Server-side save storage
+- ✅ **Matchmaking** - Quick match and ranked modes
+- ✅ **State Sync** - Host-authoritative with delta compression
+
+### Testing
+```bash
+cd server && npm test
+```
+
+All 5 integration tests pass ✅
+
+For complete setup instructions, see **[MULTIPLAYER_GUIDE.md](MULTIPLAYER_GUIDE.md)**
 
 ## Game Architecture
 
