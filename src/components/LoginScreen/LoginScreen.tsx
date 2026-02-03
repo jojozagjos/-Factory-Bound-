@@ -102,7 +102,8 @@ const LoginScreen = ({ onLogin }: LoginScreenProps) => {
         </button>
 
         <p className="login-note">
-          Guest accounts cannot save progress to the cloud
+          Guest accounts cannot save progress to the cloud.<br/>
+          <small>Note: Authentication is currently client-side only for demo purposes.</small>
         </p>
       </div>
     </div>

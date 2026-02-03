@@ -5,6 +5,25 @@ A professional Factorio-style automation game with visual/node-based programming
 **🎮 MULTIPLAYER NOW FULLY WORKING! 🎮**  
 Real-time co-op and PvP with up to 8 players! See [MULTIPLAYER_GUIDE.md](MULTIPLAYER_GUIDE.md) for setup.
 
+## ⚠️ Important: Starting the Game
+
+**To avoid WebSocket connection errors, always start BOTH the client and server:**
+
+```bash
+npm run dev:all
+```
+
+Or if running separately, **start the server FIRST**:
+```bash
+# Terminal 1 - Start server FIRST
+npm run dev:server
+
+# Terminal 2 - Then start client
+npm run dev
+```
+
+**The multiplayer server on port 3001 must be running for multiplayer features!**
+
 ## Features
 
 ### Core Gameplay

@@ -1,5 +1,25 @@
 # Factory Bound Multiplayer - Complete Setup Guide
 
+## ⚠️ IMPORTANT: Server Must Be Running for Multiplayer
+
+**If you see WebSocket connection errors**, the multiplayer server is not running. To fix:
+
+```bash
+# Start BOTH the client AND server:
+npm run dev:all
+```
+
+Or start them separately:
+```bash
+# Terminal 1: Start the server FIRST
+npm run dev:server
+
+# Terminal 2: Then start the client
+npm run dev
+```
+
+**The server MUST be running on port 3001 for multiplayer to work!**
+
 ## Overview
 
 Factory Bound now has **fully working multiplayer** with real-time synchronization, session management, and support for both Co-op and PvP modes!
@@ -316,11 +336,25 @@ origin: ['https://yourdomain.com']
 
 1. ✅ **Server is running** - Multiplayer is fully functional
 2. ✅ **Testing complete** - All integration tests pass
-3. 🔄 **Add authentication** - User accounts and login
+3. 🔄 **Add authentication** - Currently client-side only; needs backend integration for real user accounts
 4. 🔄 **Add persistence** - Database integration
 5. 🔄 **Add matchmaking** - ELO-based ranked system
 6. 🔄 **Add chat** - Real-time messaging
 7. 🔄 **Deploy** - Production hosting
+
+## Known Limitations
+
+### Authentication
+- **Current**: Client-side only - any username/password is accepted
+- **Impact**: No actual account verification, progress is stored locally
+- **Future**: Requires backend API integration for real authentication
+- **Workaround**: Use guest mode for now; local saves work fine
+
+### Account Creation
+- **Current**: Sign up form exists but doesn't create real accounts
+- **Impact**: Cannot create unique accounts or recover passwords
+- **Future**: Requires user database and authentication service
+- **Workaround**: Use any credentials to "sign in" - they're stored locally only
 
 ## Support
 
