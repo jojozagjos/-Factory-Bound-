@@ -109,44 +109,57 @@ export class SimulationEngine {
       return // No power, no operation
     }
 
-    switch (machine.type) {
-      case 'miner':
-        this.updateMiner(machine)
-        break
-      case 'assembler':
-        this.updateAssembler(machine)
-        break
-      case 'belt':
-        this.updateBelt(machine, allMachines)
-        break
-      case 'inserter':
-        this.updateInserter(machine, allMachines)
-        break
-      case 'turret':
-        // Turret needs access to enemies and projectiles
-        // This will be handled in the tick method
-        break
-      // Vehicle types
-      case 'boat_1':
-      case 'boat_2':
-      case 'boat_3':
-      case 'boat_4':
-      case 'train_1':
-      case 'train_2':
-      case 'train_3':
-      case 'train_4':
-        this.updateVehicle(machine, allMachines)
-        break
-      // Station types
-      case 'dock_station':
-      case 'rail_station':
-        this.updateStation(machine, allMachines)
-        break
-      // Military buildings
-      case 'barracks':
-      case 'vehicle_factory':
-        this.updateMilitaryBuilding(machine, allMachines)
-        break
+    const machineType = machine.type.toString()
+
+    // Handle machines by type pattern matching for variants
+    // Miners and Extractors (extractor_1, extractor_2, miner, miner_t2, etc.)
+    if (machineType === 'miner' || machineType.startsWith('miner_') || machineType.startsWith('extractor_')) {
+      this.updateMiner(machine)
+    }
+    // Assemblers and crafting buildings (assembler, assembler_t2, workshop, machine_shop, etc.)
+    else if (machineType === 'assembler' || machineType.startsWith('assembler_') || 
+             machineType === 'workshop' || machineType === 'machine_shop' || 
+             machineType === 'industrial_factory' || machineType === 'manufacturer') {
+      this.updateAssembler(machine)
+    }
+    // Smelters and furnaces (smelter, furnace, forge, steel_furnace, etc.)
+    else if (machineType === 'smelter' || machineType.startsWith('smelter_') ||
+             machineType === 'furnace' || machineType === 'forge' ||
+             machineType === 'steel_furnace' || machineType === 'electric_furnace') {
+      this.updateAssembler(machine) // Use assembler logic for smelting
+    }
+    // Belts (belt, belt_1, belt_2, belt_3, belt_4, fast_belt, express_belt)
+    else if (machineType === 'belt' || machineType.startsWith('belt_') || 
+             machineType === 'fast_belt' || machineType === 'express_belt') {
+      this.updateBelt(machine, allMachines)
+    }
+    // Inserters and robotic arms (inserter, fast_inserter, robotic_arm_1, etc.)
+    else if (machineType === 'inserter' || machineType.startsWith('inserter_') ||
+             machineType === 'fast_inserter' || machineType === 'stack_inserter' ||
+             machineType.startsWith('robotic_arm_')) {
+      this.updateInserter(machine, allMachines)
+    }
+    // Research labs
+    else if (machineType === 'research_lab' || machineType === 'research') {
+      this.updateResearchLab(machine)
+    }
+    // Turrets (handled separately with enemies)
+    else if (machineType === 'turret' || machineType.startsWith('turret_') || 
+             machineType === 'laser_turret') {
+      // Turret needs access to enemies and projectiles
+      // This will be handled in the tick method
+    }
+    // Vehicles (boat_1, boat_2, train_1, etc.)
+    else if (machineType.startsWith('boat_') || machineType.startsWith('train_')) {
+      this.updateVehicle(machine, allMachines)
+    }
+    // Stations
+    else if (machineType === 'dock_station' || machineType === 'rail_station') {
+      this.updateStation(machine, allMachines)
+    }
+    // Military buildings
+    else if (machineType === 'barracks' || machineType === 'vehicle_factory') {
+      this.updateMilitaryBuilding(machine, allMachines)
     }
 
     // Execute node program if present
@@ -183,6 +196,21 @@ export class SimulationEngine {
       this.resourceSystem.consumeIngredients(machine)
       
       // Produce outputs
+      this.resourceSystem.produceOutputs(machine)
+    }
+  }
+
+  private updateResearchLab(machine: Machine): void {
+    // Research labs consume science packs to generate research progress
+    // Similar to assemblers but specifically for research recipes
+    if (!machine.recipe) return
+
+    // Check if we have ingredients (science packs) using ResourceSystem
+    if (this.resourceSystem.hasIngredients(machine)) {
+      // Consume science packs
+      this.resourceSystem.consumeIngredients(machine)
+      
+      // Produce research progress (outputs)
       this.resourceSystem.produceOutputs(machine)
     }
   }

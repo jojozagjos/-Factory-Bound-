@@ -18,6 +18,12 @@ const KeybindHandler = () => {
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
+      // Ignore keyboard events when user is typing in input fields
+      const target = e.target as HTMLElement
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        return
+      }
+
       // Normalize key matching (handle single-char keys vs special keys)
       const pressed = e.key
 
