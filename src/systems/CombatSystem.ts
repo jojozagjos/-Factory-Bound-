@@ -217,10 +217,20 @@ export class CombatSystem {
 
   /**
    * Consume ammo from turret
+   * Supports both standard ammo and PVP ammo types
    */
   consumeAmmo(turret: Machine): boolean {
+    // Check for various ammo types
+    const ammoTypes = [
+      'ammo_magazine',      // Standard ammo
+      'piercing_ammo',      // Piercing ammo
+      'bullet_round',       // PVP standard ammo
+      'explosive_shell',    // PVP tank shells
+    ]
+    
+    // Find any available ammo in inventory
     const ammoItem = turret.inventory.find(
-      item => item.name === 'ammo_magazine' || item.name === 'piercing_ammo'
+      item => ammoTypes.includes(item.name)
     )
     
     if (!ammoItem || ammoItem.quantity <= 0) {

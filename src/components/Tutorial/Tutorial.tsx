@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTutorialStore } from '../../store/tutorialStore'
+import { useGameStore } from '../../store/gameStore'
 import { tutorialSteps } from './tutorialSteps'
 import './Tutorial.css'
 
@@ -12,8 +13,43 @@ const Tutorial = () => {
   const completeTutorial = useTutorialStore(state => state.completeTutorial)
   const currentStepIndex = useTutorialStore(state => state.currentStep)
   const overlayRef = useRef<HTMLDivElement>(null)
+  
+  // Get game state for completion validation
+  const gameState = useGameStore(state => state)
+  const [canProgress, setCanProgress] = useState(true)
+  const [validationMessage, setValidationMessage] = useState('')
+
+  // Check completion condition when game state changes
+  useEffect(() => {
+    if (!currentStep || !currentStep.completionCondition) {
+      setCanProgress(true)
+      setValidationMessage('')
+      return
+    }
+
+    try {
+      const isComplete = currentStep.completionCondition(gameState as any)
+      setCanProgress(isComplete)
+      
+      if (!isComplete) {
+        setValidationMessage('Complete the objective to continue')
+      } else {
+        setValidationMessage('✓ Task complete! Click Next to continue')
+      }
+    } catch (err) {
+      console.error('Error checking tutorial completion condition:', err)
+      setCanProgress(true) // Allow progression on error
+      setValidationMessage('')
+    }
+  }, [currentStep, gameState])
 
   const handleNextStep = () => {
+    // Block if completion condition not met
+    if (!canProgress && currentStep?.completionCondition) {
+      setValidationMessage('⚠ You must complete the objective before continuing!')
+      return
+    }
+    
     const totalSteps = tutorialSteps.length
     if (currentStepIndex === totalSteps - 1) {
       // Last step - complete tutorial
@@ -22,6 +58,7 @@ const Tutorial = () => {
       window.dispatchEvent(new CustomEvent('tutorialComplete'))
     } else {
       nextStep()
+      setValidationMessage('') // Clear validation when moving to next step
     }
   }
 
@@ -175,6 +212,11 @@ const Tutorial = () => {
               <strong>Objective:</strong> {currentStep.objective}
             </div>
           )}
+          {validationMessage && (
+            <div className={`tutorial-validation ${canProgress ? 'success' : 'pending'}`}>
+              {validationMessage}
+            </div>
+          )}
         </div>
 
         <div className="tutorial-footer">
@@ -199,8 +241,10 @@ const Tutorial = () => {
             <button
               className="tutorial-btn tutorial-btn-primary"
               onClick={handleNextStep}
+              disabled={!canProgress && !!currentStep?.completionCondition}
+              title={!canProgress ? 'Complete the objective first' : ''}
             >
-              {currentStepIndex === totalSteps - 1 ? 'Finish Tutorial' : 'Next →'}
+              {currentStepIndex === totalSteps - 1 ? 'Finish' : 'Next →'}
             </button>
           </div>
         </div>

@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multiplayer Server Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a2e;
+            color: #eee;
+        }
+        .test-section {
+            background: #16213e;
+            border: 2px solid #0f3460;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .success {
+            background: rgba(46, 204, 113, 0.2);
+            border: 1px solid #2ecc71;
+        }
+        .error {
+            background: rgba(231, 76, 60, 0.2);
+            border: 1px solid #e74c3c;
+        }
+        .pending {
+            background: rgba(241, 196, 15, 0.2);
+            border: 1px solid #f1c40f;
+        }
+        button {
+            background: #e94560;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #c23b52;
+        }
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        pre {
+            background: #0a0a0a;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Factory Bound Multiplayer Server Test</h1>
+    
+    <div class="test-section">
+        <h2>1. Server Health Check</h2>
+        <button onclick="testHealth()">Test Health Endpoint</button>
+        <div id="healthResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. WebSocket Connection</h2>
+        <button onclick="testConnection()">Connect to Server</button>
+        <button onclick="disconnect()">Disconnect</button>
+        <div id="connectionResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. Session Management</h2>
+        <button onclick="createSession()">Create Session</button>
+        <button onclick="listSessions()">List Sessions</button>
+        <div id="sessionResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Event Log</h2>
+        <button onclick="clearLog()">Clear Log</button>
+        <pre id="eventLog"></pre>
+    </div>
+
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+    <script>
+        let socket = null;
+        let sessionId = null;
+
+        function log(message, type = 'info') {
+            const logEl = document.getElementById('eventLog');
+            const timestamp = new Date().toLocaleTimeString();
+            logEl.textContent += `[${timestamp}] ${type.toUpperCase()}: ${message}\n`;
+            logEl.scrollTop = logEl.scrollHeight;
+            console.log(`[${type}]`, message);
+        }
+
+        function clearLog() {
+            document.getElementById('eventLog').textContent = '';
+        }
+
+        async function testHealth() {
+            const resultEl = document.getElementById('healthResult');
+            resultEl.innerHTML = '<div class="test-result pending">Testing...</div>';
+            log('Testing health endpoint...');
+
+            try {
+                const response = await fetch('http://localhost:3001/health');
+                const data = await response.json();
+                resultEl.innerHTML = `<div class="test-result success">✓ Server is healthy<pre>${JSON.stringify(data, null, 2)}</pre></div>`;
+                log('Health check successful', 'success');
+            } catch (error) {
+                resultEl.innerHTML = `<div class="test-result error">✗ Server not responding: ${error.message}</div>`;
+                log(`Health check failed: ${error.message}`, 'error');
+            }
+        }
+
+        function testConnection() {
+            const resultEl = document.getElementById('connectionResult');
+            resultEl.innerHTML = '<div class="test-result pending">Connecting...</div>';
+            log('Attempting to connect to WebSocket...');
+
+            socket = io('http://localhost:3001', {
+                transports: ['websocket', 'polling']
+            });
+
+            socket.on('connect', () => {
+                resultEl.innerHTML = `<div class="test-result success">✓ Connected! Socket ID: ${socket.id}</div>`;
+                log(`Connected with socket ID: ${socket.id}`, 'success');
+            });
+
+            socket.on('connect_error', (error) => {
+                resultEl.innerHTML = `<div class="test-result error">✗ Connection failed: ${error.message}</div>`;
+                log(`Connection error: ${error.message}`, 'error');
+            });
+
+            socket.on('disconnect', () => {
+                resultEl.innerHTML = '<div class="test-result pending">Disconnected</div>';
+                log('Disconnected from server', 'info');
+            });
+
+            // Listen for session events
+            socket.on('session_created', (session) => {
+                log(`Session created: ${session.id}`, 'success');
+            });
+
+            socket.on('player_joined', (player) => {
+                log(`Player joined: ${player.username}`, 'info');
+            });
+        }
+
+        function disconnect() {
+            if (socket) {
+                socket.disconnect();
+                socket = null;
+                log('Disconnected from server', 'info');
+            }
+        }
+
+        function createSession() {
+            const resultEl = document.getElementById('sessionResult');
+            
+            if (!socket || !socket.connected) {
+                resultEl.innerHTML = '<div class="test-result error">✗ Not connected to server</div>';
+                log('Cannot create session: not connected', 'error');
+                return;
+            }
+
+            resultEl.innerHTML = '<div class="test-result pending">Creating session...</div>';
+            log('Creating session...');
+
+            const settings = {
+                mode: 'coop',
+                maxPlayers: 4,
+                difficulty: 'normal',
+                pvpEnabled: false,
+                friendlyFire: false,
+                worldSeed: Date.now(),
+                modifiers: [],
+                enemiesEnabled: true,
+                enemyFactoriesEnabled: false,
+                oceanEnemiesEnabled: false,
+                maxEnemyBases: 5,
+                gameMode: 'coop'
+            };
+
+            socket.emit('create_session', settings, (session) => {
+                if (session && session.id) {
+                    sessionId = session.id;
+                    resultEl.innerHTML = `<div class="test-result success">✓ Session created!<pre>${JSON.stringify(session, null, 2)}</pre></div>`;
+                    log(`Session created successfully: ${session.id}`, 'success');
+                } else {
+                    resultEl.innerHTML = '<div class="test-result error">✗ Failed to create session</div>';
+                    log('Failed to create session', 'error');
+                }
+            });
+        }
+
+        function listSessions() {
+            const resultEl = document.getElementById('sessionResult');
+            
+            if (!socket || !socket.connected) {
+                resultEl.innerHTML = '<div class="test-result error">✗ Not connected to server</div>';
+                log('Cannot list sessions: not connected', 'error');
+                return;
+            }
+
+            resultEl.innerHTML = '<div class="test-result pending">Fetching sessions...</div>';
+            log('Listing sessions...');
+
+            socket.emit('list_sessions', { mode: 'coop' }, (result) => {
+                if (result.success && result.sessions) {
+                    resultEl.innerHTML = `<div class="test-result success">✓ Found ${result.sessions.length} session(s)<pre>${JSON.stringify(result.sessions, null, 2)}</pre></div>`;
+                    log(`Listed ${result.sessions.length} sessions`, 'success');
+                } else {
+                    resultEl.innerHTML = `<div class="test-result error">✗ ${result.error || 'Unknown error'}</div>`;
+                    log(`Failed to list sessions: ${result.error}`, 'error');
+                }
+            });
+        }
+
+        // Auto-test on load
+        window.addEventListener('load', () => {
+            log('Test page loaded', 'info');
+            log('Click buttons to test server functionality', 'info');
+        });
+    </script>
+</body>
+</html>
