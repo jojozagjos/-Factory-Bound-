@@ -71,7 +71,10 @@ export class SimulationEngine {
 
     // Update turrets separately (they need enemies and projectiles)
     machines.forEach(machine => {
-      if (machine.type === 'turret' && machine.power.connected && machine.power.available >= machine.power.required) {
+      const isTurret = machine.type === 'turret' || 
+                       machine.type === 'turret_gun' || 
+                       machine.type === 'turret_cannon'
+      if (isTurret && machine.power.connected && machine.power.available >= machine.power.required) {
         this.updateTurret(machine, enemies, projectiles)
       }
     })

@@ -178,10 +178,62 @@ export class ResourceSystem {
         inputs: [
           { id: 'stone_input', name: 'stone', quantity: 1 },
           { id: 'iron_plate_input', name: 'iron_plate', quantity: 1 },
-          { id: 'steel_plate_input', name: 'steel_plate', quantity: 1 },
+          { id: 'steel_input', name: 'steel_plate', quantity: 1 },
         ],
         outputs: [{ id: 'rail_output', name: 'rail', quantity: 2 }],
         craftingTime: 0.5,
+      },
+      
+      // PVP Combat Items (from buildermentPvpExpansion)
+      {
+        id: 'gunpowder',
+        name: 'Gunpowder',
+        inputs: [
+          { id: 'coal_input', name: 'coal', quantity: 1 },
+          { id: 'stone_input', name: 'stone', quantity: 1 },
+        ],
+        outputs: [{ id: 'gunpowder_output', name: 'gunpowder', quantity: 1 }],
+        craftingTime: 2.0,
+      },
+      {
+        id: 'bullet_round',
+        name: 'Standard Ammo',
+        inputs: [
+          { id: 'iron_ingot_input', name: 'iron_plate', quantity: 1 },
+          { id: 'gunpowder_input', name: 'gunpowder', quantity: 1 },
+        ],
+        outputs: [{ id: 'bullet_output', name: 'bullet_round', quantity: 5 }],
+        craftingTime: 1.0,
+      },
+      {
+        id: 'explosive_shell',
+        name: 'Tank Shell',
+        inputs: [
+          { id: 'steel_input', name: 'steel_plate', quantity: 1 },
+          { id: 'gunpowder_input', name: 'gunpowder', quantity: 4 },
+        ],
+        outputs: [{ id: 'shell_output', name: 'explosive_shell', quantity: 1 }],
+        craftingTime: 3.0,
+      },
+      {
+        id: 'armor_plating',
+        name: 'Composite Armor',
+        inputs: [
+          { id: 'steel_input', name: 'steel_plate', quantity: 2 },
+          { id: 'tungsten_input', name: 'tungsten_carbide', quantity: 1 },
+        ],
+        outputs: [{ id: 'armor_output', name: 'armor_plating', quantity: 1 }],
+        craftingTime: 5.0,
+      },
+      {
+        id: 'targeting_chip',
+        name: 'AI Core',
+        inputs: [
+          { id: 'computer_input', name: 'advanced_circuit', quantity: 1 },
+          { id: 'logic_input', name: 'electronic_circuit', quantity: 2 },
+        ],
+        outputs: [{ id: 'targeting_output', name: 'targeting_chip', quantity: 1 }],
+        craftingTime: 8.0,
       },
       {
         id: 'productivity_module',
