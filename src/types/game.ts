@@ -16,15 +16,32 @@ export enum MachineType {
   MINER_T2 = 'miner_t2',
   MINER_T3 = 'miner_t3',
   
+  // Builderment Extractors (T1-T5)
+  EXTRACTOR_1 = 'extractor_1',
+  EXTRACTOR_2 = 'extractor_2',
+  EXTRACTOR_3 = 'extractor_3',
+  EXTRACTOR_4 = 'extractor_4',
+  EXTRACTOR_5 = 'extractor_5',
+  
   // Smelting
   SMELTER = 'smelter',
   STEEL_FURNACE = 'steel_furnace',
   ELECTRIC_FURNACE = 'electric_furnace',
   
+  // Builderment Smelting
+  FURNACE = 'furnace',
+  FORGE = 'forge',
+  
   // Assembly
   ASSEMBLER = 'assembler',
   ASSEMBLER_T2 = 'assembler_t2',
   ASSEMBLER_T3 = 'assembler_t3',
+  
+  // Builderment Crafting Buildings (T1-T4)
+  WORKSHOP = 'workshop',
+  MACHINE_SHOP = 'machine_shop',
+  INDUSTRIAL_FACTORY = 'industrial_factory',
+  MANUFACTURER = 'manufacturer',
   
   // Logistics
   BELT = 'belt',
@@ -35,6 +52,20 @@ export enum MachineType {
   STACK_INSERTER = 'stack_inserter',
   SPLITTER = 'splitter',
   UNDERGROUND_BELT = 'underground_belt',
+  
+  // Builderment Belts (T1-T4)
+  BELT_1 = 'belt_1',
+  BELT_2 = 'belt_2',
+  BELT_3 = 'belt_3',
+  BELT_4 = 'belt_4',
+  
+  // Builderment Robotic Arms
+  ROBOTIC_ARM_1 = 'robotic_arm_1',
+  ROBOTIC_ARM_FAST = 'robotic_arm_fast',
+  ROBOTIC_ARM_LONG = 'robotic_arm_long',
+  
+  // Builderment Infrastructure
+  RAIL = 'rail',
   
   // Transport Vehicles
   BOAT_1 = 'boat_1',
@@ -55,6 +86,10 @@ export enum MachineType {
   SOLAR_PANEL = 'solar_panel',
   ACCUMULATOR = 'accumulator',
   
+  // Builderment Power
+  COAL_POWER_PLANT = 'coal_power_plant',
+  NUCLEAR_POWER_PLANT = 'nuclear_power_plant',
+  
   // Combat
   TURRET = 'turret',
   LASER_TURRET = 'laser_turret',
@@ -69,6 +104,16 @@ export enum MachineType {
   // Storage & Special
   STORAGE = 'storage',
   RESEARCH_LAB = 'research_lab',
+  
+  // Builderment Special Buildings
+  GOLD_VAULT = 'gold_vault',
+  GEM_TREE = 'gem_tree',
+  STORAGE_SILO = 'storage_silo',
+  LOGIC_GATE = 'logic_gate',
+  
+  // Builderment End-Game
+  EARTH_TRANSPORTER = 'earth_transporter',
+  MATTER_DUPLICATOR = 'matter_duplicator',
 }
 
 export interface VehicleRoute {
