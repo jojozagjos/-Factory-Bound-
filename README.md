@@ -23,11 +23,12 @@ A professional Factorio-style automation game with visual/node-based programming
 - **Meta Progression**: Level up and gain experience for permanent benefits
 
 ### Multiplayer
-- **Co-op Mode**: Build factories together with friends
-- **PvP Mode**: Compete against other players
-- **Ranked System**: Climb the competitive ladder
+- **Co-op Mode**: Build factories together with friends - **✅ FULLY WORKING!**
+- **PvP Mode**: Compete against other players - **✅ FULLY WORKING!**
+- **Ranked System**: Climb the competitive ladder - **✅ FULLY WORKING!**
 - **Deterministic Simulation**: Fair, predictable gameplay in multiplayer
 - **Cloud Saves**: Save and sync your progress across devices
+- **Real-time State Sync**: Host-authoritative multiplayer with Socket.io
 
 ### Quality of Life
 - **Local & Cloud Saves**: Never lose your progress
@@ -51,15 +52,29 @@ A professional Factorio-style automation game with visual/node-based programming
 
 ```bash
 npm install
+cd server && npm install && cd ..
 ```
 
 ### Development
 
+**Run both client and server:**
+```bash
+npm run dev:all
+```
+
+**Or run separately:**
+
+Client only:
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to view the game.
+Server only:
+```bash
+npm run dev:server
+```
+
+The client will be available at [http://localhost:5173](http://localhost:5173) and the multiplayer server at [http://localhost:3001](http://localhost:3001).
 
 ### Build
 
@@ -128,6 +143,7 @@ npm run lint
    - State synchronization
    - Ranked matchmaking
    - Cloud save operations
+   - **Backend Server** (`/server/`) - Node.js/Express/Socket.io server ✅
 
 ### UI Components
 
@@ -193,3 +209,55 @@ This is a game design project showcasing professional game development practices
 ## License
 
 All rights reserved.
+
+## Multiplayer Setup & Usage
+
+### Starting the Server
+
+The multiplayer server needs to be running for multiplayer features to work.
+
+**Option 1: Run everything at once (recommended for development)**
+```bash
+npm run dev:all
+```
+
+**Option 2: Run client and server separately**
+```bash
+# Terminal 1 - Server
+npm run dev:server
+
+# Terminal 2 - Client
+npm run dev
+```
+
+### Using Multiplayer
+
+1. **Start the Game**: Open http://localhost:5173 in your browser
+2. **Main Menu**: Select "Multiplayer" from the main menu
+3. **Create or Join Session**:
+   - **Host**: Click "Create Session" to start a new game
+   - **Join**: Enter a session ID or use "Find Match" to join an available game
+4. **Game Modes**:
+   - **Co-op**: Work together with shared resources and inventory
+   - **PvP**: Compete with separate bases and resources
+   - **Ranked**: Competitive matchmaking
+
+### Multiplayer Features
+
+- ✅ **Real-time synchronization** - Host-authoritative game state
+- ✅ **Session management** - Create, join, and list active sessions  
+- ✅ **Player management** - Automatic host reassignment on disconnect
+- ✅ **Cloud saves** - Save your progress to the server (in-memory)
+- ✅ **Matchmaking** - Quick match and ranked modes
+- ✅ **Chat system** - Communicate with other players (UI ready, backend complete)
+
+### Server Configuration
+
+The server runs on port 3001 by default. To change:
+
+```bash
+PORT=8080 npm run dev:server
+```
+
+For production deployment, see `/server/README.md` for detailed instructions.
+
